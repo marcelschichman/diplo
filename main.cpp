@@ -4,6 +4,7 @@
 #include "sequence.h"
 #include "matchfinder.h"
 #include <list>
+#include <forward_list>
 using namespace std;
 int main()
 {
@@ -32,7 +33,7 @@ int main()
 
     string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
 
-    cout << sizeof(list<int>) << endl;
+    cout << sizeof(forward_list<int>) << endl;
 
 
     FASTQ fqReader(filename);
@@ -49,14 +50,14 @@ int main()
             cout << "added: " << idSequence << endl;
         }
 
-        if (idSequence > 30000)
+        if (idSequence > 20000)
             break;
     }
     cout << "num sequences: " << idSequence << endl;
     cout << "sum lengths: " << sumLengths << endl;
         
     map<int, vector<Match>> matches;
-    mf.GetMatches(1, matches);
+    mf.GetMatches(50, matches);
 
     int matchesCount = 0;
 

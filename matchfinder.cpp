@@ -73,15 +73,74 @@ void MatchFinder::GetMatches(int id, map<int, vector<Match>> & matches)
                     {
                         if (pos.second >= 0)
                         {
-                            matches[pos.first].push_back(Match(refPos, pos.second, false));
+                            matches[pos.first].push_back(Match(refPos, pos.second, false, length));
                         }
                         else
                         {
-                            matches[pos.first].push_back(Match(refPos, -pos.second - 1, true));
+                            matches[pos.first].push_back(Match(refPos, -pos.second - 1, true, length));
                         }
                     }
                 }
             }
         }        
+    }
+    for (auto& it : matches)
+    {
+        ExtendMatches(it.second);
+    }
+}
+
+void MatchFinder::ExtendMatches(vector<Match>& matches)
+{
+    sort(matches.begin(), matches.end(), [](const Match& left, const Match& right) -> bool 
+    {
+        int leftDiagonal = left.pos2 - left.pos1;
+        int rightDiagonal = right.pos2 - right.pos1;
+        return (leftDiagonal == rightDiagonal) ? (left.pos1 < right.pos1) : (leftDiagonal < rightDiagonal);
+    });
+    vector<Match> newMatches;
+    for (auto it = matches.begin(); it != matches.end(); )
+    {
+        int currentLength = it->length;
+        auto following = it + 1;
+        auto prev = it;
+        while (following != matches.end() && following->pos1 == prev->pos1 + 1 && following->pos2 == prev->pos2 + 1)
+        {
+            currentLength++;
+            prev = following;
+            following++;
+        }
+        newMatches.push_back(*it);
+        newMatches.back().length = currentLength;
+        it = following;
+    }
+    matches.swap(newMatches);
+    //newMatches.clear();
+}
+
+bool MatchFinder::AreOnTheSameDiagonal(const Match& m1, const Match& m2)
+{
+    const int minDistance = 50;
+    const double diagonalDistanceRatio = 0.05;
+    int distance = min(abs(m1.pos1 - m2.pos1), abs(m1.pos2 - m2.pos2));
+    int diagonalDistance = abs(m1.pos1 - m2.pos1 - (m1.pos2 - m2.pos2));
+
+    return distance >= minDistance && diagonalDistance <= distance * diagonalDistanceRatio;
+}
+
+void MatchFinder::GetGoodMatches(vector<Match>& matches, vector<Match>& goodMatches)
+{
+    goodMatches.clear();
+    // todo: use set
+    for (Match& m : matches)
+    {
+        for (Match& m2 : matches)
+        {
+            if (AreOnTheSameDiagonal(m, m2))
+            {
+                goodMatches.push_back(m);
+                break;
+            }
+        }
     }
 }

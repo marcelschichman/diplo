@@ -86,7 +86,7 @@ void MatchFinder::GetMatches(int id, map<int, vector<Match>> & matches)
     }
     for (auto& it : matches)
     {
-        ExtendMatches(it.second);
+        //ExtendMatches(it.second);
     }
 }
 
@@ -104,7 +104,7 @@ void MatchFinder::ExtendMatches(vector<Match>& matches)
         int currentLength = it->length;
         auto following = it + 1;
         auto prev = it;
-        while (following != matches.end() && following->pos1 == prev->pos1 + 1 && following->pos2 == prev->pos2 + 1)
+        while (following != matches.end() && following->pos1 == prev->pos1 + 1 && following->pos2 == prev->pos2 + 1 && prev->reversed == following->reversed)
         {
             currentLength++;
             prev = following;

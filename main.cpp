@@ -72,7 +72,7 @@ int main()
         cout << "matches with sequence " << matchesPair.first << endl;
         for (auto match : matchesPair.second)
         {
-            cout << match.pos1 << " " << match.pos2 << " " << (match.reversed ? "reversed" : "") << endl;
+            cout << match.pos1 << " " << match.pos2 << " " << (match.reversed ? "reversed" : "") << " " << match.length << endl;
         }
     }
     cout << "done" << endl;

@@ -233,5 +233,5 @@ void MatchFinder2::ExtendMatches(vector<pair<short, Match>>& oneReadMatches)
 
 void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<short, Match>>& oneReadMatches, vector<pair<short, vector<Match>>>& neighbors)
 {
-
+    
 }

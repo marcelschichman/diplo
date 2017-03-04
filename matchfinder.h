@@ -1,7 +1,9 @@
+#pragma once
 #include <vector>
 #include <tuple>
 #include "sequence.h"
 #include <map>
+#include <forward_list>
 using namespace std;
 
 struct Match {
@@ -35,11 +37,11 @@ public:
     void GetMatches(int id, map<int, vector<Match>> & matches);
     void GetGoodMatches(vector<Match>& matches, vector<Match>& goodMatches);
 
-protected:
+//protected:
     int length;
 
     // tuples are <sequence id, position within sequence, direction>
-    vector<vector<pair<short, short>>*> kmers;
+    vector<forward_list<pair<short, short>>> kmers;
 
     map<pair<short, short>, vector<Match>> pairs; 
     //unordered_set<long long, vector<tuple<int, int, bool>>> kmers;

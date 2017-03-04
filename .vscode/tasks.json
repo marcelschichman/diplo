@@ -2,32 +2,32 @@
     // See https://go.microsoft.com/fwlink/?LinkId=733558
     // for the documentation about the tasks.json format
     "version": "0.1.0",
-    "command": "sh",
-    "isShellCommand": true,
-    "args": ["-c"],
-    "showOutput": "always",
-    "suppressTaskName": true,
     "tasks": [
         {
             "taskName": "debug",
+            "isShellCommand": true,
             "isBuildCommand": false,
+            "command": "cmake",
             "args": [
-                "cmake -DCMAKE_BUILD_TYPE=Debug ."
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "."
             ]
         },
         {
             "taskName": "release",
+            "isShellCommand": true,
             "isBuildCommand": false,
+            "command": "cmake",
             "args": [
-                "cmake -DCMAKE_BUILD_TYPE=Release ."
+                "-DCMAKE_BUILD_TYPE=Release",
+                "."
             ]
         },
         {
             "taskName": "build",
+            "isShellCommand": true,
             "isBuildCommand": true,
-            "args": [
-                "make"
-            ]
+            "command": "make"
         }
     ]
 }

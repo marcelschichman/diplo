@@ -25,25 +25,26 @@ void MatchFinder::AddSequence(int id, Sequence & seq)
 
 void MatchFinder::AddKmer(unsigned int kmer, short id, short pos)
 {
-    auto& pVec(kmers[kmer]);
+/*    auto& pVec(kmers[kmer]);
     if (pVec == NULL)
     {
         pVec = new vector<pair<short, short>>();
     }
-    pVec->push_back(make_pair(id, pos));
+    pVec->push_back(make_pair(id, pos));*/
+    kmers[kmer].push_front(make_pair(id, pos));
 }
 
 void MatchFinder::Process()
 {
-    for (unsigned int kmer = 0; kmer < kmers.size(); kmer++)
+    /*for (unsigned int kmer = 0; kmer < kmers.size(); kmer++)
     {
         auto& kmerRef(kmers[kmer]);
         if (kmerRef != NULL)
         {
-            //for (auto /* tu pokracuj*/)
+            //for (auto  tu pokracuj)
         }
         
-    }
+    }*/
 }
 
 void MatchFinder::GetMatches(int id, map<int, vector<Match>> & matches)
@@ -52,11 +53,11 @@ void MatchFinder::GetMatches(int id, map<int, vector<Match>> & matches)
     for (unsigned int kmer = 0; kmer < kmers.size(); kmer++)
     {
         auto& kmerRef(kmers[kmer]);
-        if (kmerRef != NULL)
+        if (!kmerRef.empty())
         {
             int refPos = 0;
             bool found = false;
-            for (auto pos : *kmerRef)
+            for (auto pos : kmerRef)
             {
                 if (pos.first == id)
                 {
@@ -67,7 +68,7 @@ void MatchFinder::GetMatches(int id, map<int, vector<Match>> & matches)
             }
             if (found && refPos >= 0)
             {
-                for (auto pos : *kmerRef)
+                for (auto pos : kmerRef)
                 {
                     if (pos.first != id)
                     {
@@ -96,7 +97,8 @@ void MatchFinder::ExtendMatches(vector<Match>& matches)
     {
         int leftDiagonal = left.pos2 - left.pos1;
         int rightDiagonal = right.pos2 - right.pos1;
-        return (leftDiagonal == rightDiagonal) ? (left.pos1 < right.pos1) : (leftDiagonal < rightDiagonal);
+        return left.reversed == right.reversed ? ((leftDiagonal == rightDiagonal) ? (left.pos1 < right.pos1) : (leftDiagonal < rightDiagonal))
+            : left.reversed == true;
     });
     vector<Match> newMatches;
     for (auto it = matches.begin(); it != matches.end(); )

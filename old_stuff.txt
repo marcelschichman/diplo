@@ -1,0 +1,95 @@
+int main()
+{
+    string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
+
+    Tests::TestHashmapSize(filename, 13);
+    return 0;
+
+
+    MatchFinder mf(13);
+
+
+    FASTQ fqReader(filename);
+    int idSequence = 0;
+    long long sumLengths = 0;
+    while (fqReader)
+    {
+        Sequence s;
+        fqReader >> s;
+        mf.AddSequence(idSequence++, s);
+        sumLengths += s.GetData().length();
+        if (idSequence % 1000 == 0)
+        {
+            cout << "added: " << idSequence << endl;
+        }
+
+        if (idSequence > 20000)
+            break;
+    }
+    //fqReader.close();
+    cout << "num sequences: " << idSequence << endl;
+    cout << "sum lengths: " << sumLengths << endl;
+        
+    map<int, vector<Match>> matches;
+    mf.GetMatches(50, matches);
+
+    int matchesCount = 0;
+
+    for (auto matchesPair : matches)
+    {
+        if (matchesPair.second.size() < 10)
+        {
+            continue;
+        }
+        matchesCount += matchesPair.second.size();
+
+        cout << "matches with sequence " << matchesPair.first << endl;
+        for (auto match : matchesPair.second)
+        {
+            cout << match.pos1 << " " << match.pos2 << " " << (match.reversed ? "reversed" : "") << " " << match.length << endl;
+        }
+        cout << "extended matches with sequence " << matchesPair.first << endl;
+        mf.ExtendMatches(matchesPair.second);
+        for (auto match : matchesPair.second)
+        {
+            cout << match.pos1 << " " << match.pos2 << " " << (match.reversed ? "reversed" : "") << " " << match.length << endl;
+        }
+    }
+
+    Sequence seq1;
+    Sequence seq2;
+    int seq1id = 50;
+    int seq2id = 32;
+    FASTQ fqReader2(filename);
+    idSequence = 0;
+    while (fqReader2)
+    {
+        Sequence s;
+        fqReader2 >> s;
+
+        if (idSequence == 50)
+        {
+            seq1 = s;
+        }
+        if (idSequence == 32)
+        {
+            seq2 = s;
+        }
+
+        idSequence++;
+        if (idSequence > 100)
+            break;
+    }
+    mf.ExtendMatches(matches[32]);
+    for (auto match : matches[32])
+    {
+        cout << match.pos1 << " " << match.pos2 << " " << (match.reversed ? "reversed" : "") << " " << match.length << endl;
+        pair<string, string> seeds = GetMatchingSequences(seq1, seq2, match);
+        cout << seeds.first << endl << seeds.second << endl << endl;
+        if (seeds.first != seeds.second)
+        {
+            cout << "megapipkos jemine" << endl;
+        }
+    }
+    cout << "done" << endl;
+}

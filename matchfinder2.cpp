@@ -147,11 +147,12 @@ void MatchFinder2::GetMatchCounts()
 
 void MatchFinder2::ProcessMatches(OverlapGraph& graph)
 {
-    const int readsPerIteration = 5000;
+    const int readsPerIteration = 15000;
     
     for (int rangeBegin = 0; rangeBegin < numReads; rangeBegin += readsPerIteration)
     {
         int rangeEnd = min(rangeBegin + readsPerIteration, (int)numReads);
+        cout << "region: " << rangeBegin << " -> " << rangeEnd << endl;
         ProcessMatches(graph, rangeBegin, rangeEnd);
     }
 }
@@ -160,7 +161,7 @@ void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int range
 {
     const int validKmerMaxOccurences = 100;
 
-    vector<vector<pair<short, Match>>> matches (rangeEnd - rangeBegin);
+    vector<vector<pair<unsigned short, Match>>> matches (rangeEnd - rangeBegin);
 
     for (int i = 0; i < (int)countPos.size(); i++)
     {
@@ -204,7 +205,7 @@ void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int range
     }
 }
 
-bool MatchFinder2::CompareToGroupNicely(const pair<short, Match>& left, const pair<short, Match>& right)
+bool MatchFinder2::CompareToGroupNicely(const pair<unsigned short, Match>& left, const pair<unsigned short, Match>& right)
 {
     // order by matched read, orientation, diagonal, position within reference read
     int leftDiagonal = left.second.pos2 - left.second.pos1;
@@ -226,14 +227,14 @@ bool MatchFinder2::CompareToGroupNicely(const pair<short, Match>& left, const pa
         );
 }
 
-void MatchFinder2::ExtendMatches(vector<pair<short, Match>>& oneReadMatches)
+void MatchFinder2::ExtendMatches(vector<pair<unsigned short, Match>>& oneReadMatches)
 {
     if (oneReadMatches.empty())
     {
         return;
     }
-    vector<pair<short, Match>> extendedMatches;
-    pair<short, Match> lastMatch = oneReadMatches[0];
+    vector<pair<unsigned short, Match>> extendedMatches;
+    pair<unsigned short, Match> lastMatch = oneReadMatches[0];
     for (int i = 1; i < (int)oneReadMatches.size(); i++)
     {
         auto& readMatch(oneReadMatches[i]);
@@ -257,7 +258,7 @@ void MatchFinder2::ExtendMatches(vector<pair<short, Match>>& oneReadMatches)
 }
 
 
-void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<short, Match>>& oneReadMatches, vector<pair<short, vector<Match>>>& neighbors)
+void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short, Match>>& oneReadMatches, vector<pair<unsigned short, vector<Match>>>& neighbors)
 {
     const int windowSize = 20;
     const int overlappingReadsMinScore = 100;
@@ -313,4 +314,10 @@ void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<short, Match>>&
             neighbors.push_back({w.windowEnd->first, goodMatchesWithNeighbor});
         }
     }
+}
+
+void MatchFinder2::Clear()
+{
+    countPos.clear();
+    kmers.clear();
 }

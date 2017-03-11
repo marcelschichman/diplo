@@ -11,7 +11,7 @@ struct OverlapGraph
     }
 
     int numReads;
-    vector<vector<pair<short, vector<Match>>>> adjacency;
+    vector<vector<pair<unsigned short, vector<Match>>>> adjacency;
 };
 
 class MatchFinder2
@@ -33,12 +33,14 @@ public:
     void ProcessMatches(OverlapGraph& graph);
     void ProcessMatches(OverlapGraph& graph, int rangeBegin, int rangeEnd);
 
-    static bool CompareToGroupNicely(const pair<short, Match>& left, const pair<short, Match>& right);
+    static bool CompareToGroupNicely(const pair<unsigned short, Match>& left, const pair<unsigned short, Match>& right);
 
-    void ExtendMatches(vector<pair<short, Match>>& oneReadMatches);
-    void GetOverlapingReadsWithGoodMatches(vector<pair<short, Match>>& oneReadMatches, vector<pair<short, vector<Match>>>& neighbors);
+    void ExtendMatches(vector<pair<unsigned short, Match>>& oneReadMatches);
+    void GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short, Match>>& oneReadMatches, vector<pair<unsigned short, vector<Match>>>& neighbors);
 
     void GetMatchCounts();
+
+    void Clear();
 
     int length;
     long long numReads;

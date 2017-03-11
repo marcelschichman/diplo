@@ -1,6 +1,23 @@
 {
     "version": "0.2.0",
     "configurations": [
+
+        {
+            "name": "Python",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": true,
+            "pythonPath": "python3",
+            "program": "${workspaceRoot}/generator.py",
+            "cwd": null,
+            "console": "externalTerminal",
+            "env": null,
+            "envFile": "${workspaceRoot}/.env",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit"
+            ]
+        },
         {
             "name": "C++ Launch",
             "type": "cppdbg",

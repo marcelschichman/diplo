@@ -18,7 +18,11 @@ pair<string, string> GetMatchingSequences(Sequence& seq1, Sequence& seq2, Match&
 int main()
 {
     string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
+    //string filename = "/home/marcel/programming/data/test1.fastq";
 
     MatchFinder2 mf(13);
-    mf.CreateIndex(filename);
+    int numReads = mf.CreateIndex(filename);
+
+    OverlapGraph graph(numReads);
+    mf.ProcessMatches(graph);
 }

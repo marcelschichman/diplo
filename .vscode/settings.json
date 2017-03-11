@@ -1,6 +1,15 @@
 {
     "files.associations": {
         "forward_list": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "array": "cpp",
+        "*.tcc": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "streambuf": "cpp",
+        "tuple": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp"
     }
 }

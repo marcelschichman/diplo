@@ -6,7 +6,9 @@ struct OverlapGraph
 {
     OverlapGraph(int _numReads)
         : numReads(_numReads)
-    {}
+    {
+        adjacency.resize(numReads);
+    }
 
     int numReads;
     vector<vector<pair<short, vector<Match>>>> adjacency;
@@ -22,7 +24,7 @@ public:
     {
         countPos.resize(1 << (2 * length));
     }
-    void CreateIndex(const string& fastq);
+    int CreateIndex(const string& fastq);
 
 
     void GetCounts(const string& fastq);

@@ -2,7 +2,7 @@
 #include <iostream>
 using namespace std;
 
-void MatchFinder2::CreateIndex(const string &fastq)
+int  MatchFinder2::CreateIndex(const string &fastq)
 {
     GetCounts(fastq);
 
@@ -25,9 +25,10 @@ void MatchFinder2::CreateIndex(const string &fastq)
         countPos[i] = countPos[i - 1];
     }
     countPos[0] = 0;
-    cout << "done" << endl;
-    cin >> sum;
-    GetMatchCounts();
+    return numReads;
+//    cout << "done" << endl;
+//    cin >> sum;
+//    GetMatchCounts();
 }
 
 void MatchFinder2::GetCounts(const string &fastq)
@@ -227,11 +228,89 @@ bool MatchFinder2::CompareToGroupNicely(const pair<short, Match>& left, const pa
 
 void MatchFinder2::ExtendMatches(vector<pair<short, Match>>& oneReadMatches)
 {
-    //...
+    if (oneReadMatches.empty())
+    {
+        return;
+    }
+    vector<pair<short, Match>> extendedMatches;
+    pair<short, Match> lastMatch = oneReadMatches[0];
+    for (int i = 1; i < (int)oneReadMatches.size(); i++)
+    {
+        auto& readMatch(oneReadMatches[i]);
+        auto& prevMatch(oneReadMatches[i - 1]);
+
+        if (readMatch.first == prevMatch.first &&
+            readMatch.second.reversed == prevMatch.second.reversed &&
+            readMatch.second.pos1 == prevMatch.second.pos1 + 1 &&
+            readMatch.second.pos2 == prevMatch.second.pos2 + 1 )
+        {
+            lastMatch.second.length++;
+        }
+        else
+        {
+            extendedMatches.push_back(lastMatch);
+            lastMatch = readMatch;
+        }
+    }
+    extendedMatches.push_back(lastMatch);
+    oneReadMatches.swap(extendedMatches);
 }
 
 
 void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<short, Match>>& oneReadMatches, vector<pair<short, vector<Match>>>& neighbors)
 {
+    const int windowSize = 20;
+    const int overlappingReadsMinScore = 100;
+
+    struct Window
+    {
+        int read;
+        bool reversed;
+        decltype(oneReadMatches.begin()) windowEnd, windowStart;
+        int score;
+    };
+    vector<Window> bestWindowsPerRead;
     
+    int currentWindowScore = 0;
+    for (auto it1 = oneReadMatches.begin(), it2 = it1; it1 != oneReadMatches.end(); it1++)
+    {   
+        currentWindowScore += it1->second.length;
+                            // continue while:
+        while (it1 != it2   // the window has more than one match
+            && (it1->first != it2->first // window has matches from different reads
+                || it1->second.reversed != it2->second.reversed // has matches of different orientation
+                || (it1->second.pos2 - it1->second.pos1) > (it2->second.pos2 - it2->second.pos1) + windowSize // match diagonals are too far apart
+                )
+            )
+        {
+            currentWindowScore -= it2->second.length;
+            it2++;
+        }
+
+        if (bestWindowsPerRead.empty() || bestWindowsPerRead.back().read != it1->first)
+        {
+            bestWindowsPerRead.push_back({it1->first, it1->second.reversed, it1, it2, currentWindowScore});
+        }
+        else if (bestWindowsPerRead.back().score < currentWindowScore)
+        {
+            bestWindowsPerRead.back().reversed = it1->second.reversed;
+            bestWindowsPerRead.back().score = currentWindowScore;
+            bestWindowsPerRead.back().windowEnd = it1;
+            bestWindowsPerRead.back().windowStart = it2;
+        }
+    }
+
+    neighbors.clear();
+    for (Window& w : bestWindowsPerRead)
+    {
+        if (w.score > overlappingReadsMinScore)
+        {
+            vector<Match> goodMatchesWithNeighbor;
+            for (auto it = w.windowStart; it <= w.windowEnd; it++)
+            {
+                goodMatchesWithNeighbor.push_back(it->second);
+            }
+            neighbors.push_back({w.windowEnd->first, goodMatchesWithNeighbor});
+        }
+    }
 }

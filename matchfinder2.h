@@ -20,7 +20,7 @@ public:
     MatchFinder2(int _length)
         : length(_length)
         , numReads(0)
-        , matchCounts(NULL)
+//        , matchCounts(NULL)
     {
         countPos.resize(1 << (2 * length));
     }
@@ -38,13 +38,13 @@ public:
     void ExtendMatches(vector<pair<unsigned short, Match>>& oneReadMatches);
     void GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short, Match>>& oneReadMatches, vector<pair<unsigned short, vector<Match>>>& neighbors);
 
-    void GetMatchCounts();
+    //void GetMatchCounts();
 
     void Clear();
 
     int length;
     long long numReads;
-    unsigned char *matchCounts;
+    //unsigned char *matchCounts;
     vector<int> countPos;
     vector<pair<unsigned short, short>> kmers;
 };

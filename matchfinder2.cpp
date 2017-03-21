@@ -97,7 +97,7 @@ void MatchFinder2::GetKmers(const string& fastq)
         id++;
     }
 }
-
+/*
 void MatchFinder2::GetMatchCounts()
 {
     if (matchCounts != NULL)
@@ -143,18 +143,19 @@ void MatchFinder2::GetMatchCounts()
     }
     cout << "total matches: " << matchCount << endl;
     cin >> matchCount;
-}
+}*/
 
 void MatchFinder2::ProcessMatches(OverlapGraph& graph)
 {
-    const int readsPerIteration = 15000;
-    
+    const int readsPerIteration = 10000;
+    OverlapGraph tempGraph(graph.numReads);
     for (int rangeBegin = 0; rangeBegin < numReads; rangeBegin += readsPerIteration)
     {
         int rangeEnd = min(rangeBegin + readsPerIteration, (int)numReads);
-        cout << "region: " << rangeBegin << " -> " << rangeEnd << endl;
-        ProcessMatches(graph, rangeBegin, rangeEnd);
+        //cout << "region: " << rangeBegin << " -> " << rangeEnd << endl;
+        ProcessMatches(tempGraph, rangeBegin, rangeEnd);
     }
+    graph = tempGraph;
 }
 
 void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int rangeEnd)
@@ -203,6 +204,7 @@ void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int range
 
         GetOverlapingReadsWithGoodMatches(oneReadMatches, graph.adjacency[readId++]);
     }
+    matches = decltype(matches)();
 }
 
 bool MatchFinder2::CompareToGroupNicely(const pair<unsigned short, Match>& left, const pair<unsigned short, Match>& right)
@@ -260,8 +262,8 @@ void MatchFinder2::ExtendMatches(vector<pair<unsigned short, Match>>& oneReadMat
 
 void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short, Match>>& oneReadMatches, vector<pair<unsigned short, vector<Match>>>& neighbors)
 {
-    const int windowSize = 20;
-    const int overlappingReadsMinScore = 100;
+    const int windowSize = 30;
+    const int overlappingReadsMinScore = 200;
 
     struct Window
     {
@@ -318,6 +320,6 @@ void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short,
 
 void MatchFinder2::Clear()
 {
-    countPos.clear();
-    kmers.clear();
+    vector<int>().swap(countPos);
+    decltype(kmers)().swap(kmers);
 }

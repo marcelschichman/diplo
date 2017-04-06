@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
+#include "sequencegraph.h"
+#include "reconstruction.h"
 using namespace Tests;
 using namespace std;
 
@@ -133,4 +135,53 @@ void Tests::TestHashmapSize(const string& filename, int size)
     }
     cout << "max count: " << maxCount << endl;
     cin >> maxCount;
+}
+
+void Tests::FindOverlaps()
+{
+    OverlapGraph og(5);
+    SequenceGraph sg(og);
+
+    vector<SequenceNode> nodes;
+    string first = "ACTGCATGCGCTCGAGC";
+    string second = first.substr(first.length() - 5, 5) + "CCGCACC";
+    nodes.push_back({first, 0, false, {}});
+    nodes.push_back({second, 0, false, {}});
+    nodes.push_back({first.substr(first.length() - 10, 10) + "CGCGCGCGCGCGCGACT", 0, false, {}});
+    nodes.push_back({first + "CTG", 0, false, {}});
+    sg.FindOverlaps(nodes);
+    for (auto& overlap : nodes[0].overlaps)
+    {
+        cout << overlap.first << "\t" << overlap.second << endl;
+    }
+    for (auto& overlap : nodes[2].overlaps)
+    {
+        cout << overlap.first << "\t" << overlap.second << endl;
+    }
+    int x;
+    cin >> x;
+}
+
+void Tests::GetAlignmentScores()
+{
+    Scoring s;
+    s.insertion = 1;
+    s.deletion = 1;
+    s.substitution = 1;
+    
+    Sequence read("ACTGCATGCGCTCGAGC");
+    SequenceNode node1 = {"ATGACGC", 0, false, {}};
+
+    Reconstruction r(s);
+    vector<pair<int, int>> scores;
+    r.GetAlignmentScores(read, 5, node1, 0, scores);
+    for (auto& score : scores)
+    {
+        cout << score.first << ": " << score.second << endl;
+    }
+}
+
+void Tests::FindPath()
+{
+
 }

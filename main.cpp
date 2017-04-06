@@ -20,6 +20,9 @@ pair<string, string> GetMatchingSequences(Sequence& seq1, Sequence& seq2, Match&
 
 int main()
 {
+    Tests::GetAlignmentScores();
+    return 0;
+
     string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
     //string filename = "/home/marcel/programming/data/test1.fastq";
     //string filename = "/home/marcel/programming/data/overlap.fastq";

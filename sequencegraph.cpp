@@ -58,10 +58,11 @@ void SequenceGraph::GetNodes(int idRead, vector<SequenceNode>& nodes)
             for (Match& m : neighbor2.second)
             {
                 auto seqPos = GetSequence(idNeighbor, m, reversed);
-                nodes.push_back({seqPos.first, seqPos.second, true, {}});
+                nodes.push_back({seqPos.first, seqPos.second + meanOffset, true, {}});
             }
         }
     }
+    FindOverlaps(nodes);
 }
 
 pair<string, int> SequenceGraph::GetSequence(int idRead, Match& m, bool reversed)
@@ -111,5 +112,6 @@ void SequenceGraph::FindOverlaps(vector<SequenceNode>& nodes)
                 }
             }
         }
+        sufBegin = nextSeq;
     }
 }

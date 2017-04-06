@@ -6,6 +6,8 @@ struct SequenceNode
     string sequence;
     int expectedPos;
     bool isFromReference;
+    
+    // idNode, overlap
     vector<pair<int, int>> overlaps;
 };
 

@@ -15,4 +15,10 @@ namespace Tests
     void MatchFinderSimpleTest();
 
     void TestHashmapSize(const string& filename, int size);
+
+    void FindOverlaps();
+
+    void GetAlignmentScores();
+
+    void FindPath();
 }

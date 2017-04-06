@@ -12,8 +12,12 @@ target_link_libraries(matchfinder2 sequence)
 target_link_libraries(matchfinder2 matchfinder)
 
 add_library(sequencegraph sequencegraph.cpp)
-target_link_libraries(matchfinder2 sequence)
-target_link_libraries(matchfinder2 matchfinder)
+target_link_libraries(sequencegraph sequence)
+target_link_libraries(sequencegraph matchfinder)
+
+add_library(reconstruction reconstruction.cpp)
+target_link_libraries(reconstruction sequencegraph)
+
 
 add_library(tests tests.cpp)
 target_link_libraries(tests matchfinder)
@@ -28,3 +32,4 @@ target_link_libraries(main matchfinder2)
 target_link_libraries(main tests)
 target_link_libraries(main utils)
 target_link_libraries(main sequencegraph)
+target_link_libraries(main reconstruction)

@@ -4,6 +4,10 @@ using namespace std;
 
 struct OverlapGraph
 {
+    OverlapGraph()
+        : numReads(0)
+    {
+    }
     OverlapGraph(int _numReads)
         : numReads(_numReads)
     {

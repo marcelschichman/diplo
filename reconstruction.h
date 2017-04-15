@@ -10,7 +10,6 @@ struct Scoring
     int (*misplacementPenalty)(int);
     int (*overlapPenalty)(int, int); // overlap, length
     
-    int notFromReferencePenalty;
 };
 
 class Reconstruction
@@ -29,14 +28,14 @@ public:
         int overlapWithPrevious;
     };
 
-    void FindPath(Sequence& read, vector<SequenceNode>& nodes);
+    string FindPath(const Sequence& read, const vector<SequenceNode>& nodes);
 
-    void GetAlignmentScores(Sequence& read, int readPos, SequenceNode& node, int nodePos, vector<pair<int, int>>& scores);
+    void GetAlignmentScores(const Sequence& read, int readPos, const SequenceNode& node, int nodePos, vector<pair<int, int>>& scores);
 
 
-    string RecreatePath(vector<vector<Position>>& positions, vector<SequenceNode>& nodes, int posInRead, int node);
+    string RecreatePath(const vector<vector<Position>>& positions, const vector<SequenceNode>& nodes, int posInRead, int node);
 
-    int GetStepLength(SequenceNode& node, int overlap, int posInRead);
+    int GetStepLength(const SequenceNode& node, int overlap, int posInRead);
 
     Scoring scoring;
     vector<vector<int>> alignmentMatrix;

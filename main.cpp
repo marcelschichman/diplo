@@ -9,6 +9,8 @@
 #include <unordered_set>
 #include <set>
 #include "sequencegraph.h"
+#include "reconstruction.h"
+#include "filestorage.h"
 using namespace std;
 
 pair<string, string> GetMatchingSequences(Sequence& seq1, Sequence& seq2, Match& m)
@@ -20,19 +22,24 @@ pair<string, string> GetMatchingSequences(Sequence& seq1, Sequence& seq2, Match&
 
 int main()
 {
-    Tests::GetAlignmentScores();
-    return 0;
+//    Tests::FindPath();
+//    return 0;
 
     string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
     //string filename = "/home/marcel/programming/data/test1.fastq";
     //string filename = "/home/marcel/programming/data/overlap.fastq";
 
-    MatchFinder2 mf(13);
-    int numReads = mf.CreateIndex(filename);
+    OverlapGraph graph;
+    if (!FileStorage::Load("overlapgraph.txt", graph))
+    {
+        MatchFinder2 mf(13);
+        int numReads = mf.CreateIndex(filename);
 
-    OverlapGraph graph(numReads);
-    mf.ProcessMatches(graph);
-    mf.Clear();
+        graph = OverlapGraph(numReads);
+        mf.ProcessMatches(graph);
+        mf.Clear();
+        FileStorage::Save("overlapgraph.txt", graph);
+    }
 
     /*for (auto& x : graph.adjacency[35146])
     {
@@ -73,6 +80,17 @@ int main()
     vector<SequenceNode> nodes;
     seqGraph.GetNodes(1, nodes);
 
-    int x;
-    cin >> x;
+
+    Scoring s;
+    s.insertion = 1;
+    s.deletion = 1;
+    s.substitution = 1;
+    s.notFromReferencePenalty = 10;
+    s.misplacementPenalty = [](int distance) { return 0; };
+    s.overlapPenalty = [](int overlap, int length) { return 0; };
+
+
+    Reconstruction r(s);
+
+    cout << r.FindPath(seqGraph.forward[1], nodes) << endl;
 }

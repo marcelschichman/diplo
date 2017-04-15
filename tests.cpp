@@ -183,5 +183,23 @@ void Tests::GetAlignmentScores()
 
 void Tests::FindPath()
 {
+    Sequence read("ACTGCATGCGCTCGAGCTGTAGCT");
+    cout << read.GetData() << endl;
 
+
+    SequenceNode node1 = {"ACTGCATGCG", 0, true, {{1, 3}}};
+    SequenceNode node2 = {"GCGCTCGAGC", 10, true, {{2, 5}}};
+    SequenceNode node3 = {"CGAGCTGTAGCT", 17, true, {}};
+
+
+    Scoring s;
+    s.insertion = 1;
+    s.deletion = 1;
+    s.substitution = 1;
+    s.notFromReferencePenalty = 10;
+    s.misplacementPenalty = [](int distance) { return 0; };
+    s.overlapPenalty = [](int overlap, int length) { return 0; };
+    Reconstruction r(s);
+
+    cout << r.FindPath(read, {node1, node2, node3}) << endl;
 }

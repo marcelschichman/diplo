@@ -262,7 +262,7 @@ void MatchFinder2::ExtendMatches(vector<pair<unsigned short, Match>>& oneReadMat
 
 void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short, Match>>& oneReadMatches, vector<pair<unsigned short, vector<Match>>>& neighbors)
 {
-    const int windowSize = 30;
+    const int windowSize = 50;
     const int overlappingReadsMinScore = 200;
 
     struct Window

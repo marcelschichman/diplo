@@ -7,6 +7,13 @@
 using namespace std;
 
 struct Match {
+    Match()
+        : pos1(0)
+        , pos2(0)
+        , reversed(false)
+        , length(0)
+        , kmer(0)
+        {}
     Match(int _pos1, int _pos2, bool _reversed, short _length)
         : pos1(_pos1)
         , pos2(_pos2)

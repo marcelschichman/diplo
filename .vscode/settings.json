@@ -11,6 +11,7 @@
         "tuple": "cpp",
         "initializer_list": "cpp",
         "utility": "cpp",
-        "system_error": "cpp"
+        "system_error": "cpp",
+        "iosfwd": "cpp"
     }
 }

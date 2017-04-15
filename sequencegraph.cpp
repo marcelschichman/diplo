@@ -47,7 +47,7 @@ void SequenceGraph::GetNodes(int idRead, vector<SequenceNode>& nodes)
             nodes.push_back({GetSequence(idRead, m, false).first, m.pos1, true, {}});
             meanOffset += m.pos1 - m.pos2;
         }
-        meanOffset /= neighbor.second.size();
+        meanOffset /= (int)neighbor.second.size();
 
         for (auto& neighbor2 : overlapGraph.adjacency[idNeighbor])
         {
@@ -58,7 +58,7 @@ void SequenceGraph::GetNodes(int idRead, vector<SequenceNode>& nodes)
             for (Match& m : neighbor2.second)
             {
                 auto seqPos = GetSequence(idNeighbor, m, reversed);
-                nodes.push_back({seqPos.first, seqPos.second + meanOffset, true, {}});
+                nodes.push_back({seqPos.first, seqPos.second + meanOffset, false, {}});
             }
         }
     }

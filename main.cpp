@@ -11,6 +11,7 @@
 #include "sequencegraph.h"
 #include "reconstruction.h"
 #include "filestorage.h"
+#include "utils.h"
 using namespace std;
 
 pair<string, string> GetMatchingSequences(Sequence& seq1, Sequence& seq2, Match& m)
@@ -22,8 +23,8 @@ pair<string, string> GetMatchingSequences(Sequence& seq1, Sequence& seq2, Match&
 
 int main()
 {
-//    Tests::FindPath();
-//    return 0;
+    //Tests::FindPath();
+    //return 0;
 
     string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
     //string filename = "/home/marcel/programming/data/test1.fastq";
@@ -75,22 +76,32 @@ int main()
 
     cin >> x;*/
 
+    int idRead = 1001;
+
     SequenceGraph seqGraph(graph);
     seqGraph.LoadReads(filename);
     vector<SequenceNode> nodes;
-    seqGraph.GetNodes(1, nodes);
+    Utils::StartTiming();
+    seqGraph.GetNodes(idRead, nodes);
+    Utils::VerbalResult("get nodes took ");
 
+    cout << "reference length: " << seqGraph.forward[idRead].GetData().length() << endl;
+    cout << "num overlapping reads: " << graph.adjacency[idRead].size() << endl;
+    Utils::NodesToFasta(nodes);
+    //return 0;
 
     Scoring s;
     s.insertion = 1;
     s.deletion = 1;
     s.substitution = 1;
-    s.notFromReferencePenalty = 10;
     s.misplacementPenalty = [](int distance) { return 0; };
     s.overlapPenalty = [](int overlap, int length) { return 0; };
 
+    cout << seqGraph.forward[idRead].GetData().length() << endl;
 
     Reconstruction r(s);
 
-    cout << r.FindPath(seqGraph.forward[1], nodes) << endl;
+    cout << r.Reconstruct(seqGraph.forward[idRead], nodes) << endl;
+    int x = 5;
 }
+//509 3144

@@ -15,15 +15,15 @@ add_library(sequencegraph sequencegraph.cpp)
 target_link_libraries(sequencegraph sequence)
 target_link_libraries(sequencegraph matchfinder)
 
+add_library(utils utils.cpp)
+target_link_libraries(utils matchfinder)
+
 add_library(reconstruction reconstruction.cpp)
-target_link_libraries(reconstruction sequencegraph)
+target_link_libraries(reconstruction sequencegraph utils)
 
 
 add_library(tests tests.cpp)
 target_link_libraries(tests matchfinder)
-
-add_library(utils utils.cpp)
-target_link_libraries(utils matchfinder)
 
 add_library(filestorage filestorage.cpp)
 target_link_libraries(filestorage matchfinder matchfinder2)

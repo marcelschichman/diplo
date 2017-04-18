@@ -9,6 +9,7 @@ struct SequenceNode
     
     // idNode, overlap
     vector<pair<int, int>> overlaps;
+    bool reversed;
 };
 
 class SequenceGraph

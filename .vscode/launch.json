@@ -8,7 +8,7 @@
             "request": "launch",
             "stopOnEntry": true,
             "pythonPath": "python3",
-            "program": "${workspaceRoot}/generator.py",
+            "program": "${file}",
             "cwd": null,
             "console": "externalTerminal",
             "env": null,

@@ -6,3 +6,7 @@ CMakeFiles/*
 .directory
 *.a
 *.txt
+.~*
+*.fasta
+*.fastq
+read_selector

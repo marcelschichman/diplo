@@ -18,7 +18,5 @@ namespace Tests
 
     void FindOverlaps();
 
-    void GetAlignmentScores();
-
     void FindPath();
 }

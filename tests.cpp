@@ -162,44 +162,53 @@ void Tests::FindOverlaps()
     cin >> x;
 }
 
-void Tests::GetAlignmentScores()
-{
-    Scoring s;
-    s.insertion = 1;
-    s.deletion = 1;
-    s.substitution = 1;
-    
-    Sequence read("ACTGCATGCGCTCGAGC");
-    SequenceNode node1 = {"ATGACGC", 0, false, {}};
 
-    Reconstruction r(s);
-    vector<pair<int, int>> scores;
-    r.GetAlignmentScores(read, 5, node1, 0, scores);
-    for (auto& score : scores)
-    {
-        cout << score.first << ": " << score.second << endl;
-    }
-}
 
 void Tests::FindPath()
 {
-    Sequence read("ACTGCATGCGCTCGAGCTGTAGCT");
+/*
+    Sequence read("ACTGCATGCGCTGTAGCT");
     cout << read.GetData() << endl;
 
 
-    SequenceNode node1 = {"ACTGCATGCG", 0, true, {{1, 3}}};
-    SequenceNode node2 = {"GCGCTCGAGC", 10, true, {{2, 5}}};
-    SequenceNode node3 = {"CGAGCTGTAGCT", 17, true, {}};
+    SequenceNode node1 = {"ACTGCATGC", 0, true, {{1, 2}}};
+    SequenceNode node2 = {"GCGCTCGAGC", 10, false, {{2, 2}}};
+    SequenceNode node3 = {"GCTGTAGCT", 15, true, {}};
+*/
+    //Sequence read("ACTGCATGCGCTGTAGCTATCGCTAGCTAGCCGCGCGTATTATATCCTTGAGCT");
+    string original = "ACTGCATGCGCTGTAGCTATCGCTAGCTAGCCGCGCGTATTATATCCTTGAGCT";
+    //                     ]      
+    Sequence read("ACTGCATGCGCTGAGCTATCGCGCTAGCCGCGCGATTATTCCTTGAGCT");
 
+    SequenceNode node0 = {"ACTGCATGC", 0, true, {{1, 4}}};
+    SequenceNode node1 = {"ATGCGCTGT", 0, false, {{2, 4}}};
+    SequenceNode node2 = {"CTGTAGCTAT", 0, false, {{3, 3}}};
+    SequenceNode node3 = {"TATCGCTAGCTA", 0, false, {{4, 3}, {9, 2}}};
+    SequenceNode node4 = {"CTAGCCGCGC", 0, true, {{5, 5}}};
+    SequenceNode node5 = {"CGCGCGTATT", 0, false, {{6, 6}}};
+    SequenceNode node6 = {"CGTATTATAT", 0, false, {{7, 5}}};
+    SequenceNode node7 = {"TATATCCTTGAG", 0, false, {{8, 5}}};
+    SequenceNode node8 = {"TTGAGCT", 0, true, {}};
+
+    SequenceNode node9 = {"TACGCG", 0, false, {{5, 4}}};
+    
+    node8.expectedPos = read.GetData().length() - node8.sequence.length();
+    node4.expectedPos = read.GetData().find(node4.sequence);
 
     Scoring s;
     s.insertion = 1;
     s.deletion = 1;
     s.substitution = 1;
-    s.notFromReferencePenalty = 10;
     s.misplacementPenalty = [](int distance) { return 0; };
     s.overlapPenalty = [](int overlap, int length) { return 0; };
     Reconstruction r(s);
+    vector<SequenceNode> nodes = {node0, node1, node2, node3, node4, node5, node6, node7, node8, node9};
 
-    cout << r.FindPath(read, {node1, node2, node3}) << endl;
+    auto result = r.Reconstruct(read, nodes);
+    cout << result << endl;
+    if (result == original)
+    {
+        cout << "sukces" << endl;
+    }
+    int x = 5;
 }

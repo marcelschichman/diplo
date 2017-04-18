@@ -24,16 +24,17 @@ public:
     struct Position
     {
         int distance;
-        int previousNode;
-        int overlapWithPrevious;
+        int posInRead;
+        int posInNode;
+        int node;
+        int previousPos;
     };
 
-    string FindPath(const Sequence& read, const vector<SequenceNode>& nodes);
+    string Reconstruct(const Sequence& read, const vector<SequenceNode>& nodes);
 
-    void GetAlignmentScores(const Sequence& read, int readPos, const SequenceNode& node, int nodePos, vector<pair<int, int>>& scores);
+    pair<string, int> FindPath(const Sequence& read, const vector<SequenceNode>& nodes, int begin, int end);
 
-
-    string RecreatePath(const vector<vector<Position>>& positions, const vector<SequenceNode>& nodes, int posInRead, int node);
+    string RecreatePath(const vector<Position>& positions, const vector<SequenceNode>& nodes, int currPos);
 
     int GetStepLength(const SequenceNode& node, int overlap, int posInRead);
 

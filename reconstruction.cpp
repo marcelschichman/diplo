@@ -3,162 +3,221 @@
 #include <vector>
 #include <tuple>
 #include <iostream>
+#include <climits>
+#include "utils.h"
+#include <set>
 
-string Reconstruction::FindPath(const Sequence& read, const vector<SequenceNode>& nodes)
+pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<SequenceNode>& nodes, int begin, int end)
 {
-    int endPos = read.GetData().length();
+    cout << "node count: " << nodes.size() << endl;
 
-    int startNode = -1;
-    for (int i = 0; i < nodes.size(); i++)
+    auto compare = [end](const Position& left, const Position& right)
     {
-        if (nodes[i].isFromReference)
-        {
-            if (startNode == -1 || nodes[i].expectedPos < nodes[startNode].expectedPos)
-            {
-                startNode = i;
-            }
-        }
-    }
-    if (startNode == -1)
-    {
-        return "";
-    }
-    
-
-    // [pos in read][node]
-    vector<vector<Position>> positions(read.GetData().length() + 1, vector<Position>(nodes.size(), {-1, -1, 0}));
-
-    struct ReconstructionStep
-    {
-        int distance;
-        int posInRead;
-        int node;
-        int overlap;
-        int previousNode;
+        return ((left.node == end) < (right.node == end)) || 
+        (!((left.node == end) > (right.node == end)) && (left.distance > right.distance || (!(right.distance > left.distance) && left.posInRead < right.posInRead)));
     };
 
-    auto compare = [](const ReconstructionStep& left, const ReconstructionStep& right)
-    {
-        return left.distance > right.distance || (!(right.distance > left.distance) && left.posInRead < right.posInRead);
-    };
+    set<tuple<int, int, int>> visited;
+    vector<Position> positions;
 
-    // {edit distance, pos in read, node, overlap}
-    priority_queue<ReconstructionStep, vector<ReconstructionStep>, decltype(compare)> steps(compare);
+    priority_queue<Position, vector<Position>, decltype(compare)> steps(compare);
+    SequenceNode beginNode = nodes[begin];
+    SequenceNode endNode = nodes[end];
 
-    steps.push({0, nodes[startNode].expectedPos + (int)nodes[startNode].sequence.length(), startNode, 0, -1});
+    steps.push({0, beginNode.expectedPos + (int)beginNode.sequence.length(), (int)beginNode.sequence.length(), begin, -1});
 
-    string result;
 
     long long iterationCounter = 0;
-
+    int furthestInRead = 0;
     while (!steps.empty())
     {
-        cout << iterationCounter++ << " " << steps.size() << endl;
+        iterationCounter++;;
+        //cout << iterationCounter++ << " " << steps.size() << endl;
         auto step = steps.top();
         steps.pop();
-        int &distance(step.distance);
-        int &posInRead(step.posInRead);
-        int &node(step.node);
-        int &overlap(step.overlap);
-        int &previousNode(step.previousNode);
-        
-        if (positions[posInRead][node].distance != -1)
+
+        if (step.posInRead >= endNode.expectedPos + endNode.sequence.length())
         {
             continue;
         }
 
-        positions[posInRead][node] = {distance, previousNode, overlap};
-
-        if (posInRead >= endPos)
+        if (visited.find(make_tuple(step.posInRead, step.node, step.posInNode)) != visited.end())
         {
-            result = RecreatePath(positions, nodes, posInRead, node);
-            return result;
+            continue;
+        }
+        visited.insert(make_tuple(step.posInRead, step.node, step.posInNode));
+        int currentPosition = positions.size();
+        positions.push_back({step.distance, step.posInRead, step.posInNode, step.node, step.previousPos});
+
+        if (step.node == end && step.posInRead == endNode.expectedPos + step.posInNode)
+        {
+            //end
+            cout << "iterations: " << iterationCounter << endl;
+            return make_pair(RecreatePath(positions, nodes, currentPosition), step.distance);
         }
 
-        for (auto& nextNode : nodes[node].overlaps)
+        furthestInRead = max(furthestInRead, step.posInRead);
+        if (furthestInRead - 10 > step.posInRead)
         {
-            // {alignment end pos in read, score}
-            vector<pair<int, int>> alignmentScores;
-            GetAlignmentScores(read, posInRead, nodes[nextNode.first], nextNode.second, alignmentScores);
+            continue;
+        }
 
-            int stepLength = GetStepLength(nodes[nextNode.first], nextNode.second, posInRead);
-            for (auto& alignment : alignmentScores)
+        if (step.posInNode == nodes[step.node].sequence.length())
+        {
+            for (auto& overlapNextNode : nodes[step.node].overlaps)
             {
-                int newDistance = distance + stepLength + alignment.second;
-                steps.push({newDistance, alignment.first, nextNode.first, nextNode.second, node});
+                const SequenceNode& nextNode = nodes[overlapNextNode.first];
+                if (!nextNode.isFromReference
+                 || (overlapNextNode.first == end && step.posInRead == endNode.expectedPos + overlapNextNode.second))
+                {
+                    int newDistance = step.distance
+                        + scoring.overlapPenalty(overlapNextNode.second, nextNode.sequence.length())
+                        + scoring.misplacementPenalty(step.posInRead - nextNode.expectedPos - overlapNextNode.second);
+                    steps.push({
+                        newDistance, 
+                        step.posInRead, 
+                        overlapNextNode.second, 
+                        overlapNextNode.first, 
+                        currentPosition
+                    });
+                }
+            }
+        }
+        else
+        {
+            bool match = read.GetData()[step.posInRead] == nodes[step.node].sequence[step.posInNode];
+            //match/mismatch
+            steps.push({
+                step.distance + (!match) * scoring.substitution,
+                step.posInRead + 1,
+                step.posInNode + 1,
+                step.node,
+                currentPosition
+            });
+            if (!match)
+            {
+                //insertion
+                steps.push({
+                    step.distance + scoring.insertion,
+                    step.posInRead + 1,
+                    step.posInNode,
+                    step.node,
+                    currentPosition
+                });
+                //deletion
+                steps.push({
+                    step.distance + scoring.deletion,
+                    step.posInRead,
+                    step.posInNode + 1,
+                    step.node,
+                    currentPosition
+                });
             }
         }
     }
-    return "";
+    cout << "iterations: " << iterationCounter << endl;
+    return make_pair("", -1);
 }
 
-void Reconstruction::GetAlignmentScores(const Sequence& read, int readPos, const SequenceNode& node, int nodePos, vector<pair<int, int>>& scores)
-{
-    string readSeq = read.GetData().substr(readPos, min(read.GetData().length() - readPos, node.sequence.length() * 2));
-    //string nodeSeq = node.sequence.substr(nodePos, node.sequence.length() - nodePos);
-    string nodeSeq(node.sequence.begin() + nodePos, node.sequence.end());
-
-    if (!alignmentMatrix.empty() && alignmentMatrix[0].size() < readSeq.length() + 1)
-    {
-        for (int i = 0; i < alignmentMatrix.size(); i++)
-        {
-            alignmentMatrix[i].resize(readSeq.length() + 1);
-        }
-    }
-
-    if (alignmentMatrix.size() < nodeSeq.length() + 1)
-    {
-        alignmentMatrix.resize(nodeSeq.length() + 1, vector<int>(readSeq.length() + 1));
-    }
-
-    // fill trivial solutions (all inserts and all deletes)
-    for (int i = 0; i <= nodeSeq.length(); i++)
-    {
-        alignmentMatrix[i][0] = i;
-    }
-    for (int i = 1; i <= readSeq.length(); i++)
-    {
-        alignmentMatrix[0][i] = i;
-    }
-
-    // fill alignment matrix
-    for (int i = 1; i <= nodeSeq.length(); i++)
-    {
-        for (int j = 1; j <= readSeq.length(); j++)
-        {
-            int insertion = alignmentMatrix[i - 1][j] + scoring.insertion;
-            int deletion = alignmentMatrix[i][j - 1] + scoring.deletion;
-            int substitution = alignmentMatrix[i - 1][j - 1] + scoring.substitution * (nodeSeq[i - 1] != readSeq[j - 1]);
-            alignmentMatrix[i][j] = min({insertion, deletion, substitution});
-        }
-    }
-
-    scores.clear();
-    for (int i = 0; i <= readSeq.length(); i++)
-    {
-        scores.push_back(make_pair(readPos + i, alignmentMatrix[nodeSeq.length()][i]));
-    }
-}
-
-string Reconstruction::RecreatePath(const vector<vector<Position>>& positions, const vector<SequenceNode>& nodes, int posInRead, int node)
+string Reconstruction::RecreatePath(const vector<Position>& positions, const vector<SequenceNode>& nodes, int currPos)
 {
     string result;
-    while (node >= 0)
+    int endNodeBases = positions[currPos].posInNode + 1;
+    int prevPosInNode = -1;
+    int prevNode = -1;
+    while (currPos >= 0)
     {
-        const Position &pos(positions[posInRead][node]);
-        string nextPiece = nodes[node].sequence.substr(pos.overlapWithPrevious, int(nodes[node].sequence.length()) - pos.overlapWithPrevious);
-        reverse(nextPiece.begin(), nextPiece.end());
-        result.append(nextPiece);
-        posInRead = posInRead - nodes[node].sequence.length() + pos.overlapWithPrevious;
-        node = pos.previousNode;
+        const Position& position = positions[currPos];
+        if ((position.node != prevNode || position.posInNode != prevPosInNode) 
+            && position.posInNode < nodes[position.node].sequence.length())
+        {
+            result += nodes[position.node].sequence[position.posInNode];
+        }
+        prevPosInNode = position.posInNode;
+        prevNode = position.node;
+
+        currPos = position.previousPos;
     }
     reverse(result.begin(), result.end());
-    return result;
+    return result.substr(0, result.length() - endNodeBases);
+/*    string result;
+    const SequenceNode& endNode = nodes[node];
+    int posInEndNode = posInNode;
+    while (posInRead != -1)
+    {
+        const Position& position = positions[posInRead][node][posInNode];
+        if ((position.previousNode != node || position.previousPosInNode != posInNode) 
+            && position.previousPosInNode < nodes[position.previousNode].sequence.length())
+        {
+            result += nodes[position.previousNode].sequence[position.previousPosInNode];
+        }
+        posInRead = position.previousPosInRead;
+        posInNode = position.previousPosInNode;
+        node = position.previousNode;
+    }
+
+    reverse(result.begin(), result.end());
+    return result.substr(0, result.length() - posInEndNode);*/
 }
 
-int Reconstruction::GetStepLength(const SequenceNode& node, int overlap, int posInRead)
+string Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode>& nodes)
 {
-    return (!node.isFromReference) * scoring.notFromReferencePenalty 
-        + scoring.overlapPenalty(overlap, node.sequence.length()) 
-        + scoring.misplacementPenalty(posInRead - node.expectedPos);
+    cout << "reconstruct" << endl;
+    const int skipsAllowed = 2;
+
+    vector<int> nodesFromReference;
+    for (size_t i = 0; i < nodes.size(); i++)
+    {
+        if (nodes[i].isFromReference)
+        {
+            nodesFromReference.push_back(i);
+        }
+    }
+    cout << "ndoes from reference: " << nodesFromReference.size() << endl;
+    sort(nodesFromReference.begin(), nodesFromReference.end(), [&nodes](int left, int right) {
+        return nodes[left].expectedPos < nodes[right].expectedPos;
+    });
+    cout << "sorted" << endl;
+
+    vector<string> paths(nodesFromReference.size());
+
+    // distance, previous node
+    vector<pair<int, int>> distanceToMatch(nodesFromReference.size(), make_pair(INT_MAX, -1));
+    distanceToMatch[0].first = 0;
+
+    for (int i = 1; i < nodesFromReference.size(); i++)
+    {
+        for (int jump = 1; jump <= skipsAllowed && i - jump >= 0; jump++)
+        {
+            cout << nodesFromReference[i - jump] << " " << nodesFromReference[i] << endl;
+            cout << " expected pos: " << nodes[nodesFromReference[i - jump]].expectedPos << " " <<
+            nodes[nodesFromReference[i]].expectedPos << " " << nodes[nodesFromReference[i - jump]].sequence << " " << nodes[nodesFromReference[i]].sequence << endl;
+            Utils::StartTiming();
+            auto path = FindPath(read, nodes, nodesFromReference[i - jump], nodesFromReference[i]);
+            Utils::VerbalResult("Find path");
+            cout << "from " << i - jump << " to " << i << " distance " << path.second << " " << path.first << endl;
+            cout << endl << endl;
+            if (path.second != -1 && distanceToMatch[i].first > path.second + distanceToMatch[i - jump].first)
+            {
+                distanceToMatch[i].first = path.second + distanceToMatch[i - jump].first;
+                distanceToMatch[i].second = i - jump;
+                path.first.swap(paths[i]);
+            }
+            
+        }
+    }
+    vector<int> bestPathNodes;
+    for (int pos = (int)distanceToMatch.size() - 1; pos != -1; pos = distanceToMatch[pos].second)
+    {
+        bestPathNodes.push_back(pos);
+    }
+    reverse(bestPathNodes.begin(), bestPathNodes.end());
+
+    string finalSequence = nodes[nodesFromReference[bestPathNodes[0]]].sequence;
+    for (int i = 1; i < bestPathNodes.size(); i++)
+    {
+        finalSequence += paths[bestPathNodes[i]];
+        finalSequence += nodes[nodesFromReference[bestPathNodes[i]]].sequence;
+    }
+    return finalSequence;
 }

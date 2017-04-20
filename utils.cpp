@@ -39,3 +39,15 @@ void Utils::NodesToFasta(vector<SequenceNode>& nodes)
         of << n.sequence << endl;
     }
 }
+
+void Utils::ResultToOStream(vector<string>& result, ostream& stream)
+{
+    for (int i = 0; i < result.size(); i++)
+    {
+        stream << ">result" << i << endl;
+        for (int j = 0; j < result[i].length(); j += 80)
+        {
+            stream << result[i].substr(j, min(80, (int)result[i].length() - j)) << endl;
+        }
+    }    
+}

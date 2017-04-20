@@ -12,4 +12,6 @@ namespace Utils
     void StartTiming();
     double GetTimerResult();
     double VerbalResult(const string& name);
+
+    void ResultToOStream(vector<string>& result, ostream& stream);
 }

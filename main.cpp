@@ -100,8 +100,10 @@ int main()
     cout << seqGraph.forward[idRead].GetData().length() << endl;
 
     Reconstruction r(s);
-
-    cout << r.Reconstruct(seqGraph.forward[idRead], nodes) << endl;
+    vector<string> result;
+    r.Reconstruct(seqGraph.forward[idRead], nodes, result);
+    Utils::ResultToOStream(result, cout);
     int x = 5;
+    cin >> x;
 }
 //509 3144

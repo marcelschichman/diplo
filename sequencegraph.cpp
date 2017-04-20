@@ -5,8 +5,7 @@
 #include "utils.h"
 using namespace std;
 
-
-void SequenceGraph::LoadReads(const string& filename)
+void SequenceGraph::LoadReads(const string &filename)
 {
     FASTQ f(filename);
     Sequence s;
@@ -18,11 +17,11 @@ void SequenceGraph::LoadReads(const string& filename)
     }
 }
 
-void SequenceGraph::GetNodes(int idRead, vector<SequenceNode>& nodes)
+void SequenceGraph::GetNodes(int idRead, vector<SequenceNode> &nodes)
 {
     nodes.clear();
-    set<int> referenceNodes;
-    for (auto& neighbor : overlapGraph.adjacency[idRead])
+    vector<SequenceNode> referenceNodes;
+    for (auto &neighbor : overlapGraph.adjacency[idRead])
     {
         int idNeighbor = neighbor.first;
         if (neighbor.second.size() == 0)
@@ -31,7 +30,7 @@ void SequenceGraph::GetNodes(int idRead, vector<SequenceNode>& nodes)
         }
         bool reversed = neighbor.second[0].reversed;
         int meanOffset = 0;
-        for (Match& m : neighbor.second)
+        for (Match &m : neighbor.second)
         {
             // check match
             Match swappedPositions = m;
@@ -47,47 +46,61 @@ void SequenceGraph::GetNodes(int idRead, vector<SequenceNode>& nodes)
                 cout << "megapipkos jemine, pomiesane forwardy a reversy";
             }
             // sequences from the reference
-            if (referenceNodes.find(m.pos1) == referenceNodes.end())
-            {
-                nodes.push_back({GetSequence(idRead, m, false).first, m.pos1, true, {}, false});
-                referenceNodes.insert(m.pos1);
-            }
+            referenceNodes.push_back({GetSequence(idRead, m, false).first, m.pos1, true, {}, false});
+            //referenceNodes.insert(m.pos1);
+
             meanOffset += m.pos1 - m.pos2;
         }
         meanOffset /= (int)neighbor.second.size();
 
-        for (auto& neighbor2 : overlapGraph.adjacency[idNeighbor])
+        for (auto &neighbor2 : overlapGraph.adjacency[idNeighbor])
         {
             if (neighbor2.first == idRead)
             {
                 continue;
             }
-            for (Match& m : neighbor2.second)
+            for (Match &m : neighbor2.second)
             {
                 auto seqPos = GetSequence(idNeighbor, m, reversed);
                 nodes.push_back({seqPos.first, seqPos.second + meanOffset, false, {}, reversed});
             }
         }
     }
+
+    sort(referenceNodes.begin(), referenceNodes.end(), [](const SequenceNode &left, const SequenceNode &right) { 
+        return left.expectedPos < right.expectedPos || (!(right.expectedPos < left.expectedPos) && (left.sequence.length() > right.sequence.length())); 
+    });
+    int prevBegin = -1;
+    int prevEnd = -1;
+    for (SequenceNode& n : referenceNodes)
+    {
+        if ((n.expectedPos != prevBegin) && (n.expectedPos + (int)n.sequence.length() > prevEnd))
+        {
+            nodes.push_back(n);
+            prevBegin = n.expectedPos;
+            prevEnd = n.expectedPos + n.sequence.length();
+        }
+    }
+
     Utils::StartTiming();
     FindOverlaps(nodes);
     Utils::VerbalResult("find overlaps");
 }
 
-pair<string, int> SequenceGraph::GetSequence(int idRead, Match& m, bool reversed)
+pair<string, int> SequenceGraph::GetSequence(int idRead, Match &m, bool reversed)
 {
-    Sequence& s((reversed ? reverse : forward)[idRead]);
+    Sequence &s((reversed ? reverse : forward)[idRead]);
     int length = s.GetData().length();
     int pos = reversed ? (length - m.pos1 - m.length) : m.pos1;
     return make_pair(s.GetData().substr(pos, m.length), pos);
 }
 
-void SequenceGraph::FindOverlaps(vector<SequenceNode>& nodes)
+void SequenceGraph::FindOverlaps(vector<SequenceNode> &nodes)
 {
     vector<tuple<string, bool, int>> prefixesSufixes;
     for (int nodeId = 0; nodeId < nodes.size(); nodeId++)
     {
-        SequenceNode& node(nodes[nodeId]);
+        SequenceNode &node(nodes[nodeId]);
         for (int i = 2; i < node.sequence.length() - 1; i++)
         {
             prefixesSufixes.push_back(make_tuple(node.sequence.substr(0, i), true, nodeId));

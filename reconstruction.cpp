@@ -139,31 +139,15 @@ string Reconstruction::RecreatePath(const vector<Position>& positions, const vec
         currPos = position.previousPos;
     }
     reverse(result.begin(), result.end());
-    return result.substr(0, result.length() - endNodeBases);
-/*    string result;
-    const SequenceNode& endNode = nodes[node];
-    int posInEndNode = posInNode;
-    while (posInRead != -1)
-    {
-        const Position& position = positions[posInRead][node][posInNode];
-        if ((position.previousNode != node || position.previousPosInNode != posInNode) 
-            && position.previousPosInNode < nodes[position.previousNode].sequence.length())
-        {
-            result += nodes[position.previousNode].sequence[position.previousPosInNode];
-        }
-        posInRead = position.previousPosInRead;
-        posInNode = position.previousPosInNode;
-        node = position.previousNode;
-    }
-
-    reverse(result.begin(), result.end());
-    return result.substr(0, result.length() - posInEndNode);*/
+    return result.substr(0, max(0, (int)result.length() - endNodeBases));
 }
 
-string Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode>& nodes)
+void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode>& nodes, vector<string>& result)
 {
+    result.clear();
     cout << "reconstruct" << endl;
     const int skipsAllowed = 2;
+    const int minSequenceLength = 40;
 
     vector<int> nodesFromReference;
     for (size_t i = 0; i < nodes.size(); i++)
@@ -182,31 +166,97 @@ string Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNo
     vector<string> paths(nodesFromReference.size());
 
     // distance, previous node
-    vector<pair<int, int>> distanceToMatch(nodesFromReference.size(), make_pair(INT_MAX, -1));
-    distanceToMatch[0].first = 0;
-
-    for (int i = 1; i < nodesFromReference.size(); i++)
+    struct PathToMatch
     {
+        int distance;
+        int previousNode;
+        int sequenceLength;
+        string lastPathSequence;
+        int overlap;
+    };
+    vector<PathToMatch> pathToMatches(nodesFromReference.size(), {INT_MAX, -1, 0, "", 0});
+
+    for (int i = 0; i < nodesFromReference.size(); i++)
+    {
+        bool isNewStart = true;
         for (int jump = 1; jump <= skipsAllowed && i - jump >= 0; jump++)
         {
-            cout << nodesFromReference[i - jump] << " " << nodesFromReference[i] << endl;
-            cout << " expected pos: " << nodes[nodesFromReference[i - jump]].expectedPos << " " <<
-            nodes[nodesFromReference[i]].expectedPos << " " << nodes[nodesFromReference[i - jump]].sequence << " " << nodes[nodesFromReference[i]].sequence << endl;
-            Utils::StartTiming();
-            auto path = FindPath(read, nodes, nodesFromReference[i - jump], nodesFromReference[i]);
-            Utils::VerbalResult("Find path");
-            cout << "from " << i - jump << " to " << i << " distance " << path.second << " " << path.first << endl;
-            cout << endl << endl;
-            if (path.second != -1 && distanceToMatch[i].first > path.second + distanceToMatch[i - jump].first)
+            if (pathToMatches[i - jump].distance != INT_MAX)
             {
-                distanceToMatch[i].first = path.second + distanceToMatch[i - jump].first;
-                distanceToMatch[i].second = i - jump;
-                path.first.swap(paths[i]);
+                isNewStart = false;
+                break;
             }
-            
+        }
+        if (isNewStart)
+        {
+            pathToMatches[i].distance = 0;
+            continue;
+        }
+
+        for (int jump = 1; jump <= skipsAllowed && i - jump >= 0; jump++)
+        {
+            if (pathToMatches[i - jump].distance == INT_MAX)
+            {
+                continue;
+            }
+            /**/cout << nodesFromReference[i - jump] << " " << nodesFromReference[i] << endl;
+            /**/cout << " expected pos: " << nodes[nodesFromReference[i - jump]].expectedPos << " " <<
+            /**/nodes[nodesFromReference[i]].expectedPos << " " << nodes[nodesFromReference[i - jump]].sequence << " " << nodes[nodesFromReference[i]].sequence << endl;
+
+
+            const SequenceNode& leftNode = nodes[nodesFromReference[i - jump]];
+            const SequenceNode& rightNode = nodes[nodesFromReference[i]];
+            int leftNodeEnd = leftNode.expectedPos + leftNode.sequence.length();
+            int rightNodeBegin = rightNode.expectedPos;
+            int overlap = 0;
+            pair<string, int> path;
+            if (leftNodeEnd > rightNodeBegin)
+            {
+                path = make_pair("", 0);
+                overlap = leftNodeEnd - rightNodeBegin;
+            }
+            else
+            {
+                /**/Utils::StartTiming();
+                path = FindPath(read, nodes, nodesFromReference[i - jump], nodesFromReference[i]);
+                /**/Utils::VerbalResult("Find path");
+            } 
+            /**/cout << "from " << i - jump << " to " << i << " distance " << path.second << " " << path.first << endl;
+            /**/cout << endl << endl;
+            if (path.second != -1 && pathToMatches[i].distance > path.second + pathToMatches[i - jump].distance)
+            {
+                pathToMatches[i].distance = path.second + pathToMatches[i - jump].distance;
+                pathToMatches[i].previousNode = i - jump;
+                pathToMatches[i].sequenceLength = pathToMatches[i - jump].sequenceLength + path.first.length() + rightNode.sequence.length() - overlap;
+                path.first.swap(pathToMatches[i].lastPathSequence);
+                pathToMatches[i].overlap = overlap;
+            }
         }
     }
-    vector<int> bestPathNodes;
+    for (int pos = (int)pathToMatches.size() - 1; pos >= 0; pos--)
+    {
+        if (pathToMatches[pos].sequenceLength >= minSequenceLength)
+        {
+            vector<int> bestPathNodes;
+            for (int pos2 = pos; pos2 != -1; pos2 = pathToMatches[pos2].previousNode)
+            {
+                bestPathNodes.push_back(pos2);
+                pos = pos2 - 1;
+            }
+            reverse(bestPathNodes.begin(), bestPathNodes.end());
+
+            string finalSequence = nodes[nodesFromReference[bestPathNodes[0]]].sequence;
+            for (int i = 1; i < bestPathNodes.size(); i++)
+            {
+                int overlap = pathToMatches[bestPathNodes[i]].overlap;
+                finalSequence += pathToMatches[bestPathNodes[i]].lastPathSequence;
+                const string& nodeSequence = nodes[nodesFromReference[bestPathNodes[i]]].sequence;
+                finalSequence += overlap ? nodeSequence.substr(overlap) : nodeSequence;
+            }
+            result.push_back(finalSequence);
+        }
+    }
+    /*vector<int> bestPathNodes;
     for (int pos = (int)distanceToMatch.size() - 1; pos != -1; pos = distanceToMatch[pos].second)
     {
         bestPathNodes.push_back(pos);
@@ -218,6 +268,7 @@ string Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNo
     {
         finalSequence += paths[bestPathNodes[i]];
         finalSequence += nodes[nodesFromReference[bestPathNodes[i]]].sequence;
-    }
-    return finalSequence;
+    }*/
+    //return finalSequence;
+
 }

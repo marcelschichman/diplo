@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "sequencegraph.h"
 #include "reconstruction.h"
+#include "utils.h"
 using namespace Tests;
 using namespace std;
 
@@ -204,9 +205,10 @@ void Tests::FindPath()
     Reconstruction r(s);
     vector<SequenceNode> nodes = {node0, node1, node2, node3, node4, node5, node6, node7, node8, node9};
 
-    auto result = r.Reconstruct(read, nodes);
-    cout << result << endl;
-    if (result == original)
+    vector<string> result;
+    r.Reconstruct(read, nodes, result);
+    Utils::ResultToOStream(result, cout);
+    if (result[0] == original)
     {
         cout << "sukces" << endl;
     }

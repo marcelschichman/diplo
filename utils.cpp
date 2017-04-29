@@ -35,8 +35,8 @@ void Utils::NodesToFasta(vector<SequenceNode>& nodes)
     
     for (SequenceNode& n : nodes)
     {
-        of << ">MD_" << (int)n.isFromReference << "_" << (int)n.reversed << "_" << (int)n.expectedPos << endl;
-        of << n.sequence << endl;
+        of << ">MD_" << (int)n.isFromReference << "_" << (int)n.reversed << "_" << n.info << "_" << (int)n.expectedPos << endl;
+        of << n.GetSequence() << endl;
     }
 }
 
@@ -50,4 +50,20 @@ void Utils::ResultToOStream(vector<string>& result, ostream& stream)
             stream << result[i].substr(j, min(80, (int)result[i].length() - j)) << endl;
         }
     }    
+}
+
+long long Utils::SeqToLongLong(const string& seq)
+{
+    long long result = 0;
+    for (char x : seq)
+    {
+        result <<= 2;
+        switch (x)
+        {
+            case 'C': result += 1; break;
+            case 'G': result += 2; break;
+            case 'T': result += 3; break;
+        }
+    }
+    return result;
 }

@@ -13,8 +13,9 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
 
     auto compare = [end](const Position& left, const Position& right)
     {
-        return ((left.node == end) < (right.node == end)) || 
-        (!((left.node == end) > (right.node == end)) && (left.distance > right.distance || (!(right.distance > left.distance) && left.posInRead < right.posInRead)));
+        // return ((left.node == end) < (right.node == end)) || 
+        // (!((left.node == end) > (right.node == end)) && (left.distance > right.distance || (!(right.distance > left.distance) && left.posInRead < right.posInRead)));
+        return left.distance > right.distance || (!(right.distance > left.distance) && left.posInRead < right.posInRead);
     };
 
     set<tuple<int, int, int>> visited;
@@ -24,19 +25,24 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
     SequenceNode beginNode = nodes[begin];
     SequenceNode endNode = nodes[end];
 
-    steps.push({0, beginNode.expectedPos + (int)beginNode.sequence.length(), (int)beginNode.sequence.length(), begin, -1});
+    steps.push({0, beginNode.expectedPos + (int)beginNode.length, (int)beginNode.length, begin, -1, pruning.minMatchesWindowSize, (1 << pruning.minMatchesWindowSize) - 1});
 
 
     long long iterationCounter = 0;
     int furthestInRead = 0;
+    long long pruned = 0;
     while (!steps.empty())
     {
         iterationCounter++;;
         //cout << iterationCounter++ << " " << steps.size() << endl;
         auto step = steps.top();
         steps.pop();
+        //if (begin == 3244 && end == 9836)
+        // {
+        //     cout << step.distance << " " << step.posInRead << " " << step.posInNode << " " << step.node << " " << nodes[step.node].GetSequence() << endl;
+        // }
 
-        if (step.posInRead >= endNode.expectedPos + endNode.sequence.length())
+        if (step.posInRead >= endNode.expectedPos + endNode.length)
         {
             continue;
         }
@@ -52,47 +58,59 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
         if (step.node == end && step.posInRead == endNode.expectedPos + step.posInNode)
         {
             //end
+            cout << "pruned: " << pruned << endl;
             cout << "iterations: " << iterationCounter << endl;
             return make_pair(RecreatePath(positions, nodes, currentPosition), step.distance);
         }
 
         furthestInRead = max(furthestInRead, step.posInRead);
-        if (furthestInRead - 10 > step.posInRead)
+        if (furthestInRead - pruning.maxDistanceFromFurthest > step.posInRead)
         {
             continue;
         }
-
-        if (step.posInNode == nodes[step.node].sequence.length())
+        if (step.numMatches < pruning.minMatches)
         {
-            for (auto& overlapNextNode : nodes[step.node].overlaps)
+            pruned++;
+            continue;
+        }
+
+        if (step.posInNode == nodes[step.node].length)
+        {
+            for (auto& overlapNextNode : nodes[step.node].GetOverlaps(read.GetData()[step.posInRead]))
             {
                 const SequenceNode& nextNode = nodes[overlapNextNode.first];
-                if (!nextNode.isFromReference
-                 || (overlapNextNode.first == end && step.posInRead == endNode.expectedPos + overlapNextNode.second))
-                {
+                // if (!nextNode.isFromReference
+                //  || (overlapNextNode.first == end && step.posInRead == endNode.expectedPos + overlapNextNode.second))
+                // {
                     int newDistance = step.distance
-                        + scoring.overlapPenalty(overlapNextNode.second, nextNode.sequence.length())
+                        + scoring.overlapPenalty(overlapNextNode.second, nextNode.length)
                         + scoring.misplacementPenalty(step.posInRead - nextNode.expectedPos - overlapNextNode.second);
                     steps.push({
                         newDistance, 
                         step.posInRead, 
                         overlapNextNode.second, 
                         overlapNextNode.first, 
-                        currentPosition
+                        currentPosition,
+                        step.numMatches,
+                        step.matchesBits
                     });
-                }
+                // }
             }
         }
         else
         {
-            bool match = read.GetData()[step.posInRead] == nodes[step.node].sequence[step.posInNode];
+            bool match = read.GetData()[step.posInRead] == nodes[step.node][step.posInNode];
+            int numMatches = step.numMatches - ((step.matchesBits & (1 << (pruning.minMatchesWindowSize - 1))) > 0);
+            int matchesBits = (step.matchesBits << 1) & ((1 << pruning.minMatchesWindowSize) - 1);
             //match/mismatch
             steps.push({
                 step.distance + (!match) * scoring.substitution,
                 step.posInRead + 1,
                 step.posInNode + 1,
                 step.node,
-                currentPosition
+                currentPosition,
+                numMatches + match,
+                matchesBits + match
             });
             if (!match)
             {
@@ -102,7 +120,9 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
                     step.posInRead + 1,
                     step.posInNode,
                     step.node,
-                    currentPosition
+                    currentPosition,
+                    numMatches,
+                    matchesBits
                 });
                 //deletion
                 steps.push({
@@ -110,7 +130,9 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
                     step.posInRead,
                     step.posInNode + 1,
                     step.node,
-                    currentPosition
+                    currentPosition,
+                    numMatches,
+                    matchesBits
                 });
             }
         }
@@ -129,9 +151,9 @@ string Reconstruction::RecreatePath(const vector<Position>& positions, const vec
     {
         const Position& position = positions[currPos];
         if ((position.node != prevNode || position.posInNode != prevPosInNode) 
-            && position.posInNode < nodes[position.node].sequence.length())
+            && position.posInNode < nodes[position.node].length)
         {
-            result += nodes[position.node].sequence[position.posInNode];
+            result += nodes[position.node][position.posInNode];
         }
         prevPosInNode = position.posInNode;
         prevNode = position.node;
@@ -146,8 +168,8 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
 {
     result.clear();
     cout << "reconstruct" << endl;
-    const int skipsAllowed = 2;
-    const int minSequenceLength = 40;
+    // const int skipsAllowed = 2;
+    // const int minSequenceLength = 40;
 
     vector<int> nodesFromReference;
     for (size_t i = 0; i < nodes.size(); i++)
@@ -179,7 +201,7 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
     for (int i = 0; i < nodesFromReference.size(); i++)
     {
         bool isNewStart = true;
-        for (int jump = 1; jump <= skipsAllowed && i - jump >= 0; jump++)
+        for (int jump = 1; jump <= pruning.skipsAllowed && i - jump >= 0; jump++)
         {
             if (pathToMatches[i - jump].distance != INT_MAX)
             {
@@ -193,7 +215,7 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
             continue;
         }
 
-        for (int jump = 1; jump <= skipsAllowed && i - jump >= 0; jump++)
+        for (int jump = 1; jump <= pruning.skipsAllowed && i - jump >= 0; jump++)
         {
             if (pathToMatches[i - jump].distance == INT_MAX)
             {
@@ -201,12 +223,12 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
             }
             /**/cout << nodesFromReference[i - jump] << " " << nodesFromReference[i] << endl;
             /**/cout << " expected pos: " << nodes[nodesFromReference[i - jump]].expectedPos << " " <<
-            /**/nodes[nodesFromReference[i]].expectedPos << " " << nodes[nodesFromReference[i - jump]].sequence << " " << nodes[nodesFromReference[i]].sequence << endl;
+            /**/nodes[nodesFromReference[i]].expectedPos << " " << nodes[nodesFromReference[i - jump]].GetSequence() << " " << nodes[nodesFromReference[i]].GetSequence() << endl;
 
 
             const SequenceNode& leftNode = nodes[nodesFromReference[i - jump]];
             const SequenceNode& rightNode = nodes[nodesFromReference[i]];
-            int leftNodeEnd = leftNode.expectedPos + leftNode.sequence.length();
+            int leftNodeEnd = leftNode.expectedPos + leftNode.length;
             int rightNodeBegin = rightNode.expectedPos;
             int overlap = 0;
             pair<string, int> path;
@@ -227,7 +249,7 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
             {
                 pathToMatches[i].distance = path.second + pathToMatches[i - jump].distance;
                 pathToMatches[i].previousNode = i - jump;
-                pathToMatches[i].sequenceLength = pathToMatches[i - jump].sequenceLength + path.first.length() + rightNode.sequence.length() - overlap;
+                pathToMatches[i].sequenceLength = pathToMatches[i - jump].sequenceLength + path.first.length() + rightNode.length - overlap;
                 path.first.swap(pathToMatches[i].lastPathSequence);
                 pathToMatches[i].overlap = overlap;
             }
@@ -235,7 +257,7 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
     }
     for (int pos = (int)pathToMatches.size() - 1; pos >= 0; pos--)
     {
-        if (pathToMatches[pos].sequenceLength >= minSequenceLength)
+        if (pathToMatches[pos].sequenceLength >= pruning.minSequenceLength)
         {
             vector<int> bestPathNodes;
             for (int pos2 = pos; pos2 != -1; pos2 = pathToMatches[pos2].previousNode)
@@ -245,12 +267,12 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
             }
             reverse(bestPathNodes.begin(), bestPathNodes.end());
 
-            string finalSequence = nodes[nodesFromReference[bestPathNodes[0]]].sequence;
+            string finalSequence = nodes[nodesFromReference[bestPathNodes[0]]].GetSequence();
             for (int i = 1; i < bestPathNodes.size(); i++)
             {
                 int overlap = pathToMatches[bestPathNodes[i]].overlap;
                 finalSequence += pathToMatches[bestPathNodes[i]].lastPathSequence;
-                const string& nodeSequence = nodes[nodesFromReference[bestPathNodes[i]]].sequence;
+                const string& nodeSequence = nodes[nodesFromReference[bestPathNodes[i]]].GetSequence();
                 finalSequence += overlap ? nodeSequence.substr(overlap) : nodeSequence;
             }
             result.push_back(finalSequence);

@@ -2,6 +2,9 @@ cmake_minimum_required (VERSION 2.6)
 project (Diplo)
 set (CMAKE_CXX_STANDARD 11)
 
+message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
+message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
+
 add_library(sequence sequence.cpp)
 
 add_library(matchfinder matchfinder.cpp)

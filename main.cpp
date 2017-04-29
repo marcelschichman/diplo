@@ -23,8 +23,10 @@ pair<string, string> GetMatchingSequences(Sequence& seq1, Sequence& seq2, Match&
 
 int main()
 {
-    //Tests::FindPath();
+    //Tests::FindOverlaps();
     //return 0;
+    // Tests::FindPath();
+    // return 0;
 
     string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
     //string filename = "/home/marcel/programming/data/test1.fastq";
@@ -78,7 +80,7 @@ int main()
 
     int idRead = 1001;
 
-    SequenceGraph seqGraph(graph);
+    SequenceGraph seqGraph(graph, 13);
     seqGraph.LoadReads(filename);
     vector<SequenceNode> nodes;
     Utils::StartTiming();
@@ -95,14 +97,27 @@ int main()
     s.deletion = 1;
     s.substitution = 1;
     s.misplacementPenalty = [](int distance) { return 0; };
-    s.overlapPenalty = [](int overlap, int length) { return 0; };
+    s.overlapPenalty = [](int overlap, int length) { return (length - overlap) / 3; };
+
+    Pruning p; 
+    p.maxDistanceFromFurthest = 20;
+    p.minMatches = 12;
+    p.minMatchesWindowSize = 20;
+    p.skipsAllowed = 3;
+    p.minSequenceLength = 40;
 
     cout << seqGraph.forward[idRead].GetData().length() << endl;
 
-    Reconstruction r(s);
+    Reconstruction r(s, p);
     vector<string> result;
+
+    Utils::StartTiming();
     r.Reconstruct(seqGraph.forward[idRead], nodes, result);
+    Utils::VerbalResult("reconstruct");
+
     Utils::ResultToOStream(result, cout);
+    ofstream of1("results/opravene1.fasta");
+    Utils::ResultToOStream(result, of1);
     int x = 5;
     cin >> x;
 }

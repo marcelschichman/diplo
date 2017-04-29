@@ -25,11 +25,12 @@ while True:
 
     if name == "" or seq == "":
         break
-    pos = int(name[8:])
+    pos = int(name[10:])
     from_reference = int(name[4]) != 0
     reversed = int(name[6]) != 0
+    info = int(name[8])
     if pos >= 0 and pos < read_length:
-        kmers.append((name, pos, seq, from_reference, reversed))
+        kmers.append((name, pos, seq, from_reference, reversed, info))
 
 def find_all(reference, substr):
     start = 0
@@ -50,10 +51,13 @@ distances_nfr_sense = []
 distances_nfr_antisense = []
 
 coverage = [0 for _ in range(read_length)]
-
+seqSet = {}
+seqSetFound = {}
 for kmer in kmers:
+    seqSet[kmer[2]] = 1
     positions = [x - offset for x in find_all(read_ref, kmer[2])]
     if positions:
+        seqSetFound[kmer[2]] = 1
         num_found += 1
         distances.append(positions[0] - kmer[1])
         if kmer[3] == False:
@@ -67,11 +71,14 @@ for kmer in kmers:
                 coverage[i] += 1
     if len(positions) > 1:
         num_found_multiple
-    print (kmer[0], kmer[1], positions)
+    print (kmer[0], kmer[1], positions, kmer[5])
 
 print("kmers:", len(kmers))
 print("num found:", num_found)
 print("num found multiple:", num_found_multiple)
+
+print("num different:", len(seqSet))
+print("num different found:", len(seqSetFound))
 
 distances_file = open("distances.txt", "w")
 for distance in distances:
@@ -86,8 +93,8 @@ print("average misplacement sense (absolute):", sum([abs(x) for x in distances_n
 distances_file = open("distances_antisense.txt", "w")
 for distance in distances_nfr_antisense:
     distances_file.write(str(distance)+"\n")
-print("average misplacement antisense:", sum(distances_nfr_antisense) / len(distances_nfr_antisense))
-print("average misplacement antisense (absolute):", sum([abs(x) for x in distances_nfr_antisense]) / len(distances_nfr_antisense))
+#print("average misplacement antisense:", sum(distances_nfr_antisense) / len(distances_nfr_antisense))
+#print("average misplacement antisense (absolute):", sum([abs(x) for x in distances_nfr_antisense]) / len(distances_nfr_antisense))
 
 coverage_file = open("coverage.txt", "w")
 for i in range(len(coverage)):

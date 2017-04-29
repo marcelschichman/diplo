@@ -12,11 +12,29 @@ struct Scoring
     
 };
 
+struct Pruning
+{
+    // distance from furthest in read
+    int maxDistanceFromFurthest;
+
+    // min matches in last n added bases
+    int minMatches;
+    int minMatchesWindowSize;
+
+    // skips over good places from reference
+    int skipsAllowed;
+
+    int minSequenceLength;
+
+    int maxGoodPlaceDistanceToFindPath;
+};
+
 class Reconstruction
 {
 public:
-    Reconstruction(const Scoring& _scoring)
+    Reconstruction(const Scoring& _scoring, const Pruning& _pruning)
         : scoring(_scoring)
+        , pruning(_pruning)
     {
 
     }
@@ -28,6 +46,9 @@ public:
         int posInNode;
         int node;
         int previousPos;
+
+        int numMatches;
+        int matchesBits;
     };
 
     void Reconstruct(const Sequence& read, const vector<SequenceNode>& nodes, vector<string>& result);
@@ -41,6 +62,7 @@ public:
     
 
     Scoring scoring;
+    Pruning pruning;
     vector<vector<int>> alignmentMatrix;
 
 };

@@ -37,7 +37,7 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
         //cout << iterationCounter++ << " " << steps.size() << endl;
         auto step = steps.top();
         steps.pop();
-        //if (begin == 3244 && end == 9836)
+        // if (begin == 85 && end == 5898)
         // {
         //     cout << step.distance << " " << step.posInRead << " " << step.posInNode << " " << step.node << " " << nodes[step.node].GetSequence() << endl;
         // }

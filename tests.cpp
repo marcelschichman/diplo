@@ -140,8 +140,13 @@ void Tests::TestHashmapSize(const string& filename, int size)
 
 void Tests::FindOverlaps()
 {
+    SequenceGraphParams params;
+    params.nodeLength = 13;
+    params.overlappingKmersMaxExpectedPosDistance = 150;
+    params.minKmerOverlap = 2;
+
     OverlapGraph og(13);
-    SequenceGraph sg(og, 13);
+    SequenceGraph sg(og, params);
 
     vector<SequenceNode> nodes;
     string first = "ACTGCATGCGCTC";
@@ -233,7 +238,12 @@ void Tests::FindPath()
 
     int idRead = 0;
 
-    SequenceGraph seqGraph(og, 10);
+    SequenceGraphParams params;
+    params.nodeLength = 10;
+    params.overlappingKmersMaxExpectedPosDistance = 150;
+    params.minKmerOverlap = 2;
+
+    SequenceGraph seqGraph(og, params);
     seqGraph.LoadReads("reconstruct_test_reads.fasta");
     vector<SequenceNode> nodes;
     Utils::StartTiming();

@@ -5,6 +5,26 @@
 #include "utils.h"
 using namespace std;
 
+const vector<pair<int, int>>& SequenceNode::GetOverlaps(char nextBase) const
+{
+    const vector<pair<int, int>>* result;
+    switch (nextBase)
+    {
+        case 'A': result = &overlapsA; break;
+        case 'C': result = &overlapsC; break;
+        case 'G': result = &overlapsG; break;
+        default: result = &overlapsT; break;
+    }
+    if (result->size() > 0)
+    {
+        return *result;
+    }
+    else
+    {
+        return overlaps;
+    }
+}
+
 void SequenceGraph::LoadReads(const string &filename)
 {
     FASTQ f(filename);
@@ -50,7 +70,7 @@ void SequenceGraph::GetNodes(int idRead, vector<SequenceNode> &nodes)
             GetSequences(idRead, m, false, sequences);
             for (unsigned int i = 0; i < sequences.size(); i++)
             {
-                nodes.push_back({sequences[i], m.pos1 + (int)i, true, {}, false, nodeLength, 4});
+                nodes.push_back({sequences[i], m.pos1 + (int)i, true, {}, false, params.nodeLength, 4});
             }
             // referenceNodes.push_back({GetSequence(idRead, m, false).first, m.pos1, true, {}, false});
             //referenceNodes.insert(m.pos1);
@@ -74,28 +94,28 @@ void SequenceGraph::GetNodes(int idRead, vector<SequenceNode> &nodes)
                 int pos = GetSequences(idNeighbor, m, reversed, sequences);
                 int refPos = pos;
                 auto closestRight = offsetRelations.upper_bound(pos);
-                int info;
                 if (closestRight == offsetRelations.end())
                 {
                     refPos += offsetRelations.rbegin()->second - offsetRelations.rbegin()->first; 
-                    info = 0;
                 }
                 else if (closestRight == offsetRelations.begin())
                 {
                     refPos += offsetRelations.begin()->second - offsetRelations.begin()->first; 
-                    info = 1;
                 }
                 else
                 {
                     auto closestLeft = closestRight;
                     closestLeft--;
                     refPos += (closestLeft->second + closestRight->second - closestLeft->first - closestRight->first) / 2;
-                    info = 2;
                 }
 
                 for (unsigned int i = 0; i < sequences.size(); i++)
                 {
-                    nodes.push_back({sequences[i], refPos + (int)i, false, {}, reversed, nodeLength, info});
+                    int nodePos = refPos + (int)i;
+                    if (nodePos > -100 && nodePos < forward[idRead].GetData().length() + 100)
+                    {
+                        nodes.push_back({sequences[i], refPos + (int)i, false, {}, reversed, params.nodeLength});
+                    }
                 }
             }
         }
@@ -140,7 +160,7 @@ int SequenceGraph::GetSequences(int idRead, Match& m, bool reversed, vector<long
 
     sequences.clear();
     long long sequence = 0;
-    unsigned long long mask = ((long long)1 << (2 * nodeLength)) - 1;
+    unsigned long long mask = ((long long)1 << (2 * params.nodeLength)) - 1;
     for (int i = 0; i < m.length; i++)
     {
         long long base = 0;
@@ -151,7 +171,7 @@ int SequenceGraph::GetSequences(int idRead, Match& m, bool reversed, vector<long
             case 'T': base = 3; break;
         }
         sequence = ((sequence << 2) + base) & mask;
-        if (i >= nodeLength - 1)
+        if (i >= params.nodeLength - 1)
         {
             sequences.push_back(sequence);
         }
@@ -185,7 +205,7 @@ void SequenceGraph::RemoveDuplicates(vector<SequenceNode>& nodes)
             sumExpectedPos += nodes[j].expectedPos;
             j++;
         }
-        nodesND.push_back({nodes[i].sequence, fromReference ? posFromReference : (sumExpectedPos / (j - i)), fromReference, {}, false, nodeLength});
+        nodesND.push_back({nodes[i].sequence, fromReference ? posFromReference : (sumExpectedPos / (j - i)), fromReference, {}, false, params.nodeLength});
         i = j;
     }
     nodes.swap(nodesND);
@@ -193,19 +213,19 @@ void SequenceGraph::RemoveDuplicates(vector<SequenceNode>& nodes)
 
 void SequenceGraph::FindOverlaps(vector<SequenceNode> &nodes)
 {
-    vector<vector<tuple<long long, bool, int>>> prefixesSufixes(nodeLength);
+    vector<vector<tuple<long long, bool, int>>> prefixesSufixes(params.nodeLength);
     for (int nodeId = 0; nodeId < nodes.size(); nodeId++)
     {
         SequenceNode &node(nodes[nodeId]);
-        for (int i = 2; i < nodeLength; i++)
+        for (int i = params.minKmerOverlap; i < params.nodeLength; i++)
         {
-            prefixesSufixes[i].push_back(make_tuple(node.sequence >> ((nodeLength - i) * 2), true, nodeId));
+            prefixesSufixes[i].push_back(make_tuple(node.sequence >> ((params.nodeLength - i) * 2), true, nodeId));
             unsigned long long mask = ((long long)1 << (2 * i)) - 1;
             prefixesSufixes[i].push_back(make_tuple(node.sequence & mask, false, nodeId));
         }
     }
 
-    for (int i = nodeLength - 1; i >= 2; i--)
+    for (int i = params.nodeLength - 1; i >= params.minKmerOverlap; i--)
     {
         sort(prefixesSufixes[i].begin(), prefixesSufixes[i].end());
 
@@ -230,7 +250,7 @@ void SequenceGraph::FindOverlaps(vector<SequenceNode> &nodes)
                 {
                     int idRead1 = get<2>(*it1);
                     int idRead2 = get<2>(*it2);
-                    if (abs(nodes[idRead1].expectedPos - nodes[idRead2].expectedPos) < 100)
+                    if (abs(nodes[idRead1].expectedPos - nodes[idRead2].expectedPos) < params.overlappingKmersMaxExpectedPosDistance/*150*/)
                     {
                         nodes[idRead1].overlaps.push_back(make_pair(idRead2, i));
                     }
@@ -242,9 +262,9 @@ void SequenceGraph::FindOverlaps(vector<SequenceNode> &nodes)
 
     for (auto& n : nodes)
     {
-        for (int i = 0; i < n.overlaps.size() && n.overlaps[i].second == nodeLength - 1; i++)
+        for (int i = 0; i < n.overlaps.size() && n.overlaps[i].second == params.nodeLength - 1; i++)
         {
-            switch (nodes[n.overlaps[i].first][nodeLength - 1])
+            switch (nodes[n.overlaps[i].first][params.nodeLength - 1])
             {
                 case 'A': n.overlapsA.push_back(n.overlaps[i]);
                 case 'C': n.overlapsC.push_back(n.overlaps[i]);

@@ -2,6 +2,7 @@
 #include "matchfinder.h"
 #include <chrono>
 #include "sequencegraph.h"
+#include "matchfinder2.h"
 
 namespace Utils
 {
@@ -15,4 +16,8 @@ namespace Utils
     double VerbalResult(const string& name);
 
     void ResultToOStream(vector<string>& result, ostream& stream);
+
+    void ExportFASTQ(vector<string>& reads, const string& filename);
+
+    void ExportReadsWithOverlaps(OverlapGraph& og, int from, int to);
 }

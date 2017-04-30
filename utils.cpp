@@ -67,3 +67,29 @@ long long Utils::SeqToLongLong(const string& seq)
     }
     return result;
 }
+
+void Utils::ExportFASTQ(vector<string>& reads, const string& filename)
+{
+    ofstream ofs(filename);
+    for (int i = 0; i < reads.size(); i++)
+    {
+        ofs << "@read" << i << endl;
+        ofs << reads[i] << endl;
+        ofs << "+" << endl;
+        ofs << endl;
+    }
+}
+
+void Utils::ExportReadsWithOverlaps(OverlapGraph& og, int from, int to)
+{
+    ofstream ofs("my_overlaps.txt");
+    for (int i = from; i < to; i++)
+    {
+        ofs << i;
+        for (auto& n : og.adjacency[i])
+        {
+            ofs << " " << n.first;
+        }
+        ofs << endl;
+    }
+}

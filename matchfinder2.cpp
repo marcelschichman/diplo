@@ -4,6 +4,7 @@ using namespace std;
 
 int  MatchFinder2::CreateIndex(const string &fastq)
 {
+    readLengths.clear();
     GetCounts(fastq);
 
     // counts to positions
@@ -38,10 +39,12 @@ void MatchFinder2::GetCounts(const string &fastq)
     Sequence seq;
     while (reader >> seq)
     {
+        readLengths.push_back(seq.GetData().length());
+
         numReads++;
         unsigned int seed = 0;
         unsigned int reversedSeed = 0;
-        unsigned int mask = ((long long)1 << (2 * length)) - 1;
+        unsigned int mask = ((long long)1 << (2 * params.kmerLength)) - 1;
         char *data = seq.ToDalignFromat();
         int genomeLength = (int)seq.GetData().length();
 
@@ -50,7 +53,7 @@ void MatchFinder2::GetCounts(const string &fastq)
             seed = ((seed << 2) + data[i]) & mask;
             reversedSeed = ((reversedSeed << 2) + 3 - data[genomeLength - i - 1]) & mask;
 
-            if (i >= length - 1)
+            if (i >= params.kmerLength - 1)
             {
                 countPos[seed]++;
                 countPos[reversedSeed]++;
@@ -71,7 +74,7 @@ void MatchFinder2::GetKmers(const string& fastq)
     {
         unsigned int seed = 0;
         unsigned int reversedSeed = 0;
-        unsigned int mask = ((long long)1 << (2 * length)) - 1;
+        unsigned int mask = ((long long)1 << (2 * params.kmerLength)) - 1;
         char *data = seq.ToDalignFromat();
         int genomeLength = (int)seq.GetData().length();
 
@@ -80,18 +83,18 @@ void MatchFinder2::GetKmers(const string& fastq)
             seed = ((seed << 2) + data[i]) & mask;
             reversedSeed = ((reversedSeed << 2) + 3 - data[genomeLength - i - 1]) & mask;
 
-            if (i >= length - 1)
+            if (i >= params.kmerLength - 1)
             {
                 if (countPos[seed] >= kmers.size())
                 {
                     cout << "megapipkos" << endl;
                 }
-                kmers[countPos[seed]++] = {(unsigned short)id, i - length + 1};
+                kmers[countPos[seed]++] = {(unsigned short)id, i - params.kmerLength + 1};
                 if (countPos[reversedSeed] >= kmers.size())
                 {
                     cout << "megapipkos" << endl;
                 }
-                kmers[countPos[reversedSeed]++] = {(unsigned short)id, -(i - length + 1) - 1};
+                kmers[countPos[reversedSeed]++] = {(unsigned short)id, -(i - params.kmerLength + 1) - 1};
             }
         }
         id++;
@@ -147,12 +150,12 @@ void MatchFinder2::GetMatchCounts()
 
 void MatchFinder2::ProcessMatches(OverlapGraph& graph)
 {
-    const int readsPerIteration = 10000;
+    //const int readsPerIteration = 10000;
     OverlapGraph tempGraph(graph.numReads);
-    for (int rangeBegin = 0; rangeBegin < numReads; rangeBegin += readsPerIteration)
+    for (int rangeBegin = 0; rangeBegin < numReads; rangeBegin += params.numProcessedReadsPerIteration)
     {
-        int rangeEnd = min(rangeBegin + readsPerIteration, (int)numReads);
-        //cout << "region: " << rangeBegin << " -> " << rangeEnd << endl;
+        int rangeEnd = min(rangeBegin + params.numProcessedReadsPerIteration, (int)numReads);
+        cerr << "region: " << rangeBegin << " -> " << rangeEnd << endl;
         ProcessMatches(tempGraph, rangeBegin, rangeEnd);
     }
     graph = tempGraph;
@@ -160,7 +163,7 @@ void MatchFinder2::ProcessMatches(OverlapGraph& graph)
 
 void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int rangeEnd)
 {
-    const int validKmerMaxOccurences = 100;
+    //const int validKmerMaxOccurences = 100;
 
     vector<vector<pair<unsigned short, Match>>> matches (rangeEnd - rangeBegin);
 
@@ -169,7 +172,7 @@ void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int range
         int beginKmerRegion = countPos[i];
         int endKmerRegion = (i < (int)countPos.size() - 1) ? countPos[i + 1] : (int)kmers.size();
         int numPositions = endKmerRegion - beginKmerRegion;
-        if (numPositions > validKmerMaxOccurences)
+        if (numPositions > params.validKmerMaxOccurrences)
         {
             continue;
         }
@@ -183,11 +186,11 @@ void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int range
                     {
                         if (kmers[l].second >= 0)
                         {
-                            matches[kmers[k].first - rangeBegin].push_back({kmers[l].first, Match(kmers[k].second, kmers[l].second, false, length)});
+                            matches[kmers[k].first - rangeBegin].push_back({kmers[l].first, Match(kmers[k].second, kmers[l].second, false, params.kmerLength)});
                         }
                         else
                         {
-                            matches[kmers[k].first - rangeBegin].push_back({kmers[l].first, Match(kmers[k].second, -kmers[l].second - 1, true, length)});
+                            matches[kmers[k].first - rangeBegin].push_back({kmers[l].first, Match(kmers[k].second, -kmers[l].second - 1, true, params.kmerLength)});
                         }
                     }
                 }
@@ -202,7 +205,9 @@ void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int range
 
         ExtendMatches(oneReadMatches);
 
-        GetOverlapingReadsWithGoodMatches(oneReadMatches, graph.adjacency[readId++]);
+        GetOverlapingReadsWithGoodMatches(readId, oneReadMatches, graph.adjacency[readId]);
+
+        readId++;
     }
     matches = decltype(matches)();
 }
@@ -260,18 +265,12 @@ void MatchFinder2::ExtendMatches(vector<pair<unsigned short, Match>>& oneReadMat
 }
 
 
-void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short, Match>>& oneReadMatches, vector<pair<unsigned short, vector<Match>>>& neighbors)
+void MatchFinder2::GetOverlapingReadsWithGoodMatches(int idRead, vector<pair<unsigned short, Match>>& oneReadMatches, vector<pair<unsigned short, vector<Match>>>& neighbors)
 {
-    const int windowSize = 50;
-    const int overlappingReadsMinScore = 200;
+    // const int windowSize = 50;
+    // const int overlappingReadsMinScore = 100;
+    // const float overlappingReadsScoreRatio = 0.01;
 
-    struct Window
-    {
-        int read;
-        bool reversed;
-        decltype(oneReadMatches.begin()) windowEnd, windowStart;
-        int score;
-    };
     vector<Window> bestWindowsPerRead;
     
     int currentWindowScore = 0;
@@ -282,7 +281,7 @@ void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short,
         while (it1 != it2   // the window has more than one match
             && (it1->first != it2->first // window has matches from different reads
                 || it1->second.reversed != it2->second.reversed // has matches of different orientation
-                || (it1->second.pos2 - it1->second.pos1) > (it2->second.pos2 - it2->second.pos1) + windowSize // match diagonals are too far apart
+                || (it1->second.pos2 - it1->second.pos1) > (it2->second.pos2 - it2->second.pos1) + params.matchesDiagonalWindowSize // match diagonals are too far apart
                 )
             )
         {
@@ -306,7 +305,7 @@ void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short,
     neighbors.clear();
     for (Window& w : bestWindowsPerRead)
     {
-        if (w.score > overlappingReadsMinScore)
+        if (w.score > params.overlappingReadsMinScore + int(GetOverlapLength(w, idRead) * params.overlappingReadsScoreRatio))
         {
             vector<Match> goodMatchesWithNeighbor;
             for (auto it = w.windowStart; it <= w.windowEnd; it++)
@@ -316,6 +315,14 @@ void MatchFinder2::GetOverlapingReadsWithGoodMatches(vector<pair<unsigned short,
             neighbors.push_back({w.windowEnd->first, goodMatchesWithNeighbor});
         }
     }
+}
+
+int MatchFinder2::GetOverlapLength(Window& w, int idReadRef)
+{
+    int offset = (w.windowStart->second.pos1 - w.windowStart->second.pos2 + w.windowEnd->second.pos1 - w.windowEnd->second.pos2) / 2;
+    int overlapBegin = max(0, offset);
+    int overlapEnd = min(readLengths[idReadRef], readLengths[w.windowEnd->first] + offset);
+    return max(0, overlapEnd - overlapBegin);
 }
 
 void MatchFinder2::Clear()

@@ -273,3 +273,22 @@ void Tests::GetAlignmentScores()
         cout << score.first << ": " << score.second << endl;
     }
 }
+
+    vector<string> readsToExport;
+    readsToExport.push_back(seqGraph.forward[idRead].GetData());
+    set<int> exported;
+    exported.insert(idRead);
+    for (auto& o : graph.adjacency[idRead])
+    {
+        if (exported.find(o.first) == exported.end())
+            readsToExport.push_back(seqGraph.forward[o.first].GetData());
+        exported.insert(o.first);
+        for (auto& o2 : graph.adjacency[o.first])
+        {
+            if (exported.find(o2.first) == exported.end())
+                readsToExport.push_back(seqGraph.forward[o2.first].GetData());
+            exported.insert(o2.first);
+            
+        }
+    }
+    Utils::ExportFASTQ(readsToExport, "relevant_reads.fastq");

@@ -37,38 +37,34 @@ struct SequenceNode
     vector<pair<int, int>> overlapsC;
     vector<pair<int, int>> overlapsG;
     vector<pair<int, int>> overlapsT;
-    const vector<pair<int, int>>& GetOverlaps(char nextBase) const
-    {
-        const vector<pair<int, int>>* result;
-        switch (nextBase)
-        {
-            case 'A': result = &overlapsA; break;
-            case 'C': result = &overlapsC; break;
-            case 'G': result = &overlapsG; break;
-            default: result = &overlapsT; break;
-        }
-        if (result->size() > 0)
-        {
-            return *result;
-        }
-        else
-        {
-            return overlaps;
-        }
-    }
+    const vector<pair<int, int>>& GetOverlaps(char nextBase) const;
+};
+
+struct SequenceGraphParams
+{
+    int nodeLength;
+    int overlappingKmersMaxExpectedPosDistance;
+    int minKmerOverlap;
 };
 
 class SequenceGraph
 {
 public:
-    SequenceGraph(OverlapGraph& _overlapGraph, int _nodeLength)
+    SequenceGraph(OverlapGraph& _overlapGraph, const SequenceGraphParams& _params)
         : overlapGraph(_overlapGraph)
-        , nodeLength(_nodeLength)
+        , params(_params)
     {}
 
     void LoadReads(const string& filename);
     void GetNodes(int idRead, vector<SequenceNode>& nodes);
+
+
+    vector<Sequence> forward;
+    vector<Sequence> reverse;
+
     void FindOverlaps(vector<SequenceNode>& nodes);
+
+protected:
     void RemoveDuplicates(vector<SequenceNode>& nodes);
     // pair<string, int> GetSequence(int idRead, Match& m, bool reversed);
 
@@ -76,9 +72,7 @@ public:
     
 
 
-
+    SequenceGraphParams params;
     OverlapGraph& overlapGraph;
-    vector<Sequence> forward;
-    vector<Sequence> reverse;
-    int nodeLength;
+    //int nodeLength;
 };

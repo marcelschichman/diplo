@@ -53,7 +53,7 @@ int main(int argc, char** argv)
     }
 
     Utils::ExportReadsWithOverlaps(graph, 0, 1010);
-    return 0;
+    //return 0;
 
     int idRead = 1001;
 
@@ -150,6 +150,9 @@ bool ParseParams(int argc, char** argv,
     cmd.add(minMatchesWindowSizeArg);
     cmd.add(skipsAllowedArg);
     cmd.add(minSequenceLengthArg);
+
+    TCLAP::UnlabeledValueArg<string> filenameArg("filename", "Input file name in FASTQ format.", false, "asdf", "filename");
+    cmd.add(filenameArg);
     
 
     try
@@ -157,17 +160,28 @@ bool ParseParams(int argc, char** argv,
         cmd.parse(argc, argv);
 
         // acquiring param values
+        matchingParams.kmerLength = kmerLengthArg.getValue();
+        matchingParams.numProcessedReadsPerIteration = readsPerIterationArg.getValue();
+        matchingParams.validKmerMaxOccurrences = kmerMaxOccurrencesArg.getValue();
+        matchingParams.matchesDiagonalWindowSize = diagonalWindowSizeArg.getValue();
+        matchingParams.overlappingReadsMinScore = overlapMinScoreArg.getValue();
+        matchingParams.overlappingReadsScoreRatio = overlapScoreRatioArg.getValue();
+
+        sequenceGraphParams.nodeLength = kmerLengthArg.getValue();
+        sequenceGraphParams.overlappingKmersMaxExpectedPosDistance = maxKmerDistanceArg.getValue();
+        sequenceGraphParams.minKmerOverlap = minKmerOverlapArg.getValue();
+
         scoring.insertion = insertionPenaltyArg.getValue();
         scoring.deletion = deletionPenaltyArg.getValue();
         scoring.substitution = substitutionPenaltyArg.getValue();
         scoring.misplacementPenalty = [](int distance) { return 0; };
         scoring.overlapPenalty = [](int overlap, int length) { return (length - overlap - 1) * 4 ; };
 
-        pruning.maxDistanceFromFurthest = 30;
-        pruning.minMatches = 11;
-        pruning.minMatchesWindowSize = 20;
-        pruning.skipsAllowed = 2;
-        pruning.minSequenceLength = 40;
+        pruning.maxDistanceFromFurthest = maxDistFromFurthestArg.getValue();
+        pruning.minMatches = minMatchesArg.getValue();
+        pruning.minMatchesWindowSize = minMatchesWindowSizeArg.getValue();
+        pruning.skipsAllowed = skipsAllowedArg.getValue();
+        pruning.minSequenceLength = minSequenceLengthArg.getValue();
 
         return true;
     }

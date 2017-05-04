@@ -19,7 +19,9 @@ bool ParseParams(int argc, char** argv,
     MatchingParams& matchingParams,
     Scoring& scoring,
     Pruning& pruning,
-    SequenceGraphParams& sequenceGraphParams);
+    SequenceGraphParams& sequenceGraphParams,
+    string& filename,
+    int& numReadsToFix);
 
 int main(int argc, char** argv)
 {
@@ -27,14 +29,16 @@ int main(int argc, char** argv)
     Scoring scoring;
     Pruning pruning; 
     SequenceGraphParams sequenceGraphParams;
+    
+    string filename = "/home/marcel/programming/diplo/tests/test_dataset.fasta";
+    int numReadsToFix = 1;
 
-    if (!ParseParams(argc, argv, matchingParams, scoring, pruning, sequenceGraphParams))
+    if (!ParseParams(argc, argv, matchingParams, scoring, pruning, sequenceGraphParams, filename, numReadsToFix))
     {
         return 1;
     }
 
-
-    string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
+    //string filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq";
     //string filename = "relevant_reads.fastq";
     //string filename = "/home/marcel/programming/data/test1.fastq";
     //string filename = "/home/marcel/programming/data/overlap.fastq";
@@ -52,49 +56,60 @@ int main(int argc, char** argv)
         FileStorage::Save("overlapgraph.txt", graph);
     }
 
-    Utils::ExportReadsWithOverlaps(graph, 0, 1010);
+    Utils::ExportReadsWithOverlaps(graph, 0, graph.adjacency.size());
     //return 0;
-
-    int idRead = 1001;
 
     SequenceGraph seqGraph(graph, sequenceGraphParams);
     seqGraph.LoadReads(filename);
-    vector<SequenceNode> nodes;
-    Utils::StartTiming();
-    seqGraph.GetNodes(idRead, nodes);
-    Utils::VerbalResult("get nodes took ");
 
-    cout << "reference length: " << seqGraph.forward[idRead].GetData().length() << endl;
-    cout << "num overlapping reads: " << graph.adjacency[idRead].size() << endl;
-    Utils::NodesToFasta(nodes);
-    //return 0;
+    int idRead = 11;
 
-    scoring.insertion = 4;
-    scoring.deletion = 5;
-    scoring.substitution = 5;
-    scoring.misplacementPenalty = [](int distance) { return 0; };
-    scoring.overlapPenalty = [](int overlap, int length) { return (length - overlap - 1) * 4 ; };
+    if (numReadsToFix == -1 || numReadsToFix > seqGraph.forward.size())
+    {
+        numReadsToFix = seqGraph.forward.size();
+    }
+    for (int idRead = 0; idRead < numReadsToFix; idRead++)
+    {
+        
+        cerr << "repairing read " << idRead << endl;
 
-    pruning.maxDistanceFromFurthest = 30;
-    pruning.minMatches = 11;
-    pruning.minMatchesWindowSize = 20;
-    pruning.skipsAllowed = 2;
-    pruning.minSequenceLength = 40;
+        vector<SequenceNode> nodes;
+        Utils::StartTiming();
+        seqGraph.GetNodes(idRead, nodes);
+        Utils::VerbalResult("get nodes took ");
 
-    cout << seqGraph.forward[idRead].GetData().length() << endl;
+        cerr << "reference length: " << seqGraph.forward[idRead].GetData().length() << endl;
+        cerr << "num overlapping reads: " << graph.adjacency[idRead].size() << endl;
+        Utils::NodesToFasta(nodes);
+        //return 0;
+
+        // scoring.insertion = 4;
+        // scoring.deletion = 5;
+        // scoring.substitution = 5;
+        // scoring.misplacementPenalty = [](int distance) { return 0; };
+        // scoring.overlapPenalty = [](int overlap, int length) { return (length - overlap - 1) * 4 ; };
+
+        // pruning.maxDistanceFromFurthest = 30;
+        // pruning.minMatches = 11;
+        // pruning.minMatchesWindowSize = 20;
+        // pruning.skipsAllowed = 2;
+        // pruning.minSequenceLength = 40;
+
+        //cout << seqGraph.forward[idRead].GetData().length() << endl;
 
 
-    Reconstruction r(scoring, pruning);
-    vector<string> result;
+        Reconstruction r(scoring, pruning);
+        vector<string> result;
 
-    Utils::StartTiming();
-    r.Reconstruct(seqGraph.forward[idRead], nodes, result);
-    Utils::VerbalResult("reconstruct");
+        Utils::StartTiming();
+        r.Reconstruct(seqGraph.forward[idRead], nodes, result);
+        Utils::VerbalResult("reconstruct");
 
-    Utils::ResultToOStream(result, cout);
-    ofstream of1("results/opravene1.fasta");
-    Utils::ResultToOStream(result, of1);
-    int x = 5;
+        Utils::ResultToOStream(result, cout, seqGraph.forward[idRead].GetId());
+        // ofstream of1("results/opravene1.fasta");
+        // Utils::ResultToOStream(result, of1);
+        int x = 5;
+    }
     //cin >> x;
 }
 //509 3144
@@ -103,7 +118,9 @@ bool ParseParams(int argc, char** argv,
     MatchingParams& matchingParams,
     Scoring& scoring,
     Pruning& pruning,
-    SequenceGraphParams& sequenceGraphParams)
+    SequenceGraphParams& sequenceGraphParams,
+    string& filename,
+    int& numReadsToFix)
 {
 
     TCLAP::CmdLine cmd(
@@ -115,8 +132,8 @@ bool ParseParams(int argc, char** argv,
     TCLAP::ValueArg<int> readsPerIterationArg("", "readsPerIteration", "Number of reads proccessed in a single run. This affects memory consumption. (10000)", false, 10000, "int");
     TCLAP::ValueArg<int> kmerMaxOccurrencesArg("", "kmerMaxOccurrences", "Maximal number of occurrences of single kmer. (100)", false, 100, "int");
     TCLAP::ValueArg<int> diagonalWindowSizeArg("", "diagonalWindowSize", "Matches diagonal interval size. (50)", false, 50, "int");
-    TCLAP::ValueArg<int> overlapMinScoreArg("", "overlapMinScore", "Minimal match length sum of overlapping reads. (100)", false, 100, "int");
-    TCLAP::ValueArg<float> overlapScoreRatioArg("", "overlapScoreRatio", "Match length sum must be bigger when the overlap is long. This sets the ratio. (0.01)", false, 0.01, "float");
+    TCLAP::ValueArg<int> overlapMinScoreArg("", "overlapMinScore", "Minimal match length sum of overlapping reads. (60)", false, 60, "int");
+    TCLAP::ValueArg<float> overlapScoreRatioArg("", "overlapScoreRatio", "Match length sum must be bigger when the overlap is long. This sets the ratio. (0.005)", false, 0.005, "float");
     cmd.add(overlapMinScoreArg);
     cmd.add(diagonalWindowSizeArg);
     cmd.add(kmerMaxOccurrencesArg);
@@ -125,8 +142,10 @@ bool ParseParams(int argc, char** argv,
     cmd.add(overlapScoreRatioArg);
 
     // SequenceGraph params
-    TCLAP::ValueArg<int> maxKmerDistanceArg("", "maxKmerDistanc", "Maximum expected distance between kmers to create edge in sequence graph. (150)", false, 150, "int");
+    TCLAP::ValueArg<int> maxKmerDistanceArg("", "maxKmerDistance", "Maximum expected distance between kmers to create edge in sequence graph. (80)", false, 80, "int");
     TCLAP::ValueArg<int> minKmerOverlapArg("", "minKmerOverlap", "Minimal kmer overlap to create edge in sequence graph. (2)", false, 2, "int");
+    TCLAP::ValueArg<int> maxEdgesFromNode("", "maxEdgesFromNode", "When non negative, limits the number of edges from node in sequence graph. (-1)", false, 40, "int");
+    cmd.add(maxEdgesFromNode);
     cmd.add(maxKmerDistanceArg);
     cmd.add(minKmerOverlapArg);
 
@@ -134,13 +153,19 @@ bool ParseParams(int argc, char** argv,
     TCLAP::ValueArg<int> insertionPenaltyArg("", "insertionPenalty", "SCORING: penalty for insertion. (4)", false, 4, "int");
     TCLAP::ValueArg<int> deletionPenaltyArg("", "deletionPenalty", "SCORING: penalty for deletion. (5)", false, 5, "int");
     TCLAP::ValueArg<int> substitutionPenaltyArg("", "substitutionPenalty", "SCORING: penalty for substitution. (5)", false, 5, "int");
+    TCLAP::ValueArg<int> maxKmerMisplacementArg("", "maxKmerMisplacement", "SCORING: if kmer's distance from its expected position exceeds this value, the path is penalized. (100)", false, 100, "int");
+    TCLAP::ValueArg<float> jumpSizeLinearPenaltyArg("", "jumpSizeLinearPenalty", "SCORING: Jump size linear penalty coefficient. (0.25)", false, 0, "float");
+    TCLAP::ValueArg<float> jumpSizeQuadraticPenaltyArg("", "jumpSizeQuadraticPenalty", "SCORING: Jump size quadratic penalty coefficient. (0)", false, 0.2, "float");
     cmd.add(insertionPenaltyArg);
     cmd.add(deletionPenaltyArg);
     cmd.add(substitutionPenaltyArg);
+    cmd.add(maxKmerMisplacementArg);
+    cmd.add(jumpSizeLinearPenaltyArg);
+    cmd.add(jumpSizeQuadraticPenaltyArg);
     
 
     // Pruning
-    TCLAP::ValueArg<int> maxDistFromFurthestArg("", "maxDistFromFurthest", "PRUNING: Maximal distance from path end yo furthest reaching path with equal edit distance. (20)", false, 20, "int");
+    TCLAP::ValueArg<int> maxDistFromFurthestArg("", "maxDistFromFurthest", "PRUNING: Maximal distance from path end yo furthest reaching path with equal edit distance. (15)", false, 15, "int");
     TCLAP::ValueArg<int> minMatchesArg("", "minMatches", "PRUNING: Minimal number of matches in last 'minMatchesWindowSize' bases. (11)", false, 11, "int");
     TCLAP::ValueArg<int> minMatchesWindowSizeArg("", "minMatchesWindowSize", "PRUNING: Window size for 'minMatches'. (20)", false, 20, "int");
     TCLAP::ValueArg<int> skipsAllowedArg("", "skipsAllowed", "PRUNING: Maximal number of seeds from reference to be skipped. (3)", false, 3, "int");
@@ -151,7 +176,9 @@ bool ParseParams(int argc, char** argv,
     cmd.add(skipsAllowedArg);
     cmd.add(minSequenceLengthArg);
 
+    TCLAP::ValueArg<int> numReadsToFixArg("", "numReadsToFix", "Number of reads to fix. -1 means all reads. (-1)", false, -1, "int");
     TCLAP::UnlabeledValueArg<string> filenameArg("filename", "Input file name in FASTQ format.", false, "asdf", "filename");
+    cmd.add(numReadsToFixArg);
     cmd.add(filenameArg);
     
 
@@ -170,12 +197,19 @@ bool ParseParams(int argc, char** argv,
         sequenceGraphParams.nodeLength = kmerLengthArg.getValue();
         sequenceGraphParams.overlappingKmersMaxExpectedPosDistance = maxKmerDistanceArg.getValue();
         sequenceGraphParams.minKmerOverlap = minKmerOverlapArg.getValue();
+        sequenceGraphParams.maxEdgesFromNode = maxEdgesFromNode.getValue();
 
         scoring.insertion = insertionPenaltyArg.getValue();
         scoring.deletion = deletionPenaltyArg.getValue();
         scoring.substitution = substitutionPenaltyArg.getValue();
-        scoring.misplacementPenalty = [](int distance) { return 0; };
-        scoring.overlapPenalty = [](int overlap, int length) { return (length - overlap - 1) * 4 ; };
+        scoring.maxKmerMisplacement = maxKmerMisplacementArg.getValue();
+        //scoring.misplacementPenalty = [maxKmerDisplacement](int distance) { return (distance > maxKmerDisplacement) * 50; };
+        scoring.jumpLinearPenalty = jumpSizeLinearPenaltyArg.getValue();
+        scoring.jumpQuadraticPenalty = jumpSizeQuadraticPenaltyArg.getValue();
+        // scoring.overlapPenalty = [linearPenalty, quadraticPenalty](int overlap, int length) {
+        //     int jumpSize = length - overlap - 1;
+        //     return int(linearPenalty * jumpSize + quadraticPenalty * jumpSize * jumpSize); 
+        // };
 
         pruning.maxDistanceFromFurthest = maxDistFromFurthestArg.getValue();
         pruning.minMatches = minMatchesArg.getValue();
@@ -183,8 +217,12 @@ bool ParseParams(int argc, char** argv,
         pruning.skipsAllowed = skipsAllowedArg.getValue();
         pruning.minSequenceLength = minSequenceLengthArg.getValue();
 
+        filename = filenameArg.getValue();
+        numReadsToFix = numReadsToFixArg.getValue();
+
         return true;
     }
+
     catch (TCLAP::ArgException& e)
 	{
         cout << "ERROR: " << e.error() << " " << e.argId() << endl;

@@ -15,7 +15,7 @@ namespace Utils
     long long SeqToLongLong(const string& seq);
     double VerbalResult(const string& name);
 
-    void ResultToOStream(vector<string>& result, ostream& stream);
+    void ResultToOStream(vector<string>& result, ostream& stream, const string& readName = "result");
 
     void ExportFASTQ(vector<string>& reads, const string& filename);
 

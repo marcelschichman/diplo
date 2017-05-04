@@ -10,6 +10,10 @@ struct Scoring
     int (*misplacementPenalty)(int);
     int (*overlapPenalty)(int, int); // overlap, length
     
+    int maxKmerMisplacement;
+    float jumpLinearPenalty;
+    float jumpQuadraticPenalty;
+
 };
 
 struct Pruning

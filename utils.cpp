@@ -25,13 +25,13 @@ double Utils::GetTimerResult() {
 
 double Utils::VerbalResult(const string& name) {
     double result = GetTimerResult();
-    cout << name << " took " << result << "s" << endl;
+    cerr << name << " took " << result << "s" << endl;
     return result;
 }
 
 void Utils::NodesToFasta(vector<SequenceNode>& nodes)
 {
-    ofstream of("dobremiesta.fasta");
+    ofstream of("tests/dobremiesta.fasta");
     
     for (SequenceNode& n : nodes)
     {
@@ -40,11 +40,11 @@ void Utils::NodesToFasta(vector<SequenceNode>& nodes)
     }
 }
 
-void Utils::ResultToOStream(vector<string>& result, ostream& stream)
+void Utils::ResultToOStream(vector<string>& result, ostream& stream, const string& readName)
 {
     for (int i = 0; i < result.size(); i++)
     {
-        stream << ">result" << i << endl;
+        stream << ">" << readName << "/" << i << endl;
         for (int j = 0; j < result[i].length(); j += 80)
         {
             stream << result[i].substr(j, min(80, (int)result[i].length() - j)) << endl;
@@ -82,7 +82,7 @@ void Utils::ExportFASTQ(vector<string>& reads, const string& filename)
 
 void Utils::ExportReadsWithOverlaps(OverlapGraph& og, int from, int to)
 {
-    ofstream ofs("my_overlaps.txt");
+    ofstream ofs("tests/my_overlaps.txt");
     for (int i = from; i < to; i++)
     {
         ofs << i;

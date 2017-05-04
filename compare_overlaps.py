@@ -13,8 +13,8 @@ def load_overlaps(filename):
         result[ints[0]] = ints[1:]
     return result
 
-true_overlaps = load_overlaps("true_overlaps.txt")
-my_overlaps = load_overlaps("my_overlaps.txt")
+true_overlaps = load_overlaps("tests/true_overlaps.txt")
+my_overlaps = load_overlaps("tests/my_overlaps.txt")
 
 
 total_correct = 0
@@ -38,7 +38,7 @@ for id_read in true_overlaps:
         else:
             num_false += 1
     num_missing = num_true - num_correct
-    print("%d\t%d\t%d\t%d" % (id_read, num_correct, num_false, num_missing))
+    #print("%d\t%d\t%d\t%d" % (id_read, num_correct, num_false, num_missing))
 
     total_correct += num_correct
     total_false += num_false

@@ -9,15 +9,15 @@ for line in reference_fasta:
     genome_list.extend(list(line.strip()))
 
 genome = "".join(genome_list)
-
-read_pos_start = 3669256
-read_pos_end = 3677922
+#1164834 1169291
+read_pos_start = 1164834
+read_pos_end = 1169291
 read_length = read_pos_end - read_pos_start + 1
 
 offset = 500
 read_ref = genome[read_pos_start - offset:read_pos_end+1 + offset]
 
-kmers_fasta = open("dobremiesta.fasta", "r")
+kmers_fasta = open("tests/dobremiesta.fasta", "r")
 kmers = []
 while True:
     name = kmers_fasta.readline().strip()
@@ -66,7 +66,7 @@ for kmer in kmers:
             else:
                 distances_nfr_antisense.append(positions[0] - kmer[1])
         #for i in range(positions[0], positions[0] + len(kmer[2])):
-        for i in range(positions[0], positions[0] + 1):
+        for i in range(positions[0], positions[0] + 20):
             if i >= 0 and i < read_length:
                 coverage[i] += 1
     if len(positions) > 1:

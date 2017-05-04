@@ -30,6 +30,12 @@
         "ratio": "cpp",
         "type_traits": "cpp",
         "typeinfo": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "slist": "cpp",
+        "functional": "cpp",
+        "mutex": "cpp",
+        "sstream": "cpp",
+        "thread": "cpp",
+        "*.a": "cpp"
     }
 }

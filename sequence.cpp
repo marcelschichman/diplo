@@ -67,25 +67,49 @@ char* Sequence::ToDalignFromat() {
 
 
 FASTA::FASTA(const string& _filename)
-: filename(_filename) {
+: is(_filename.c_str()), isOk(true) {
 }
 
 FASTA& FASTA::operator>>(Sequence& seq) {
-    ifstream is(filename);
     string data;
     string id;
     string line;
 
     if (getline(is, line)) {
         if (line.length()) {
+            if (line[0] != '>')
+            {
+                isOk = false;
+                return *this;
+            }
             id = line.substr(1, line.length() - 1);
         }
-
-        while (getline(is, line)) {
+        else
+        {
+            isOk = false;
+            return *this;
+        }
+        
+        while (true) {
+            if (is.get() == '>')
+            {
+                is.unget();
+                break;
+            }
+            if (!getline(is, line))
+            {
+                isOk = false;
+                break;
+            }
+            
             for (char c : line) {
                 data.push_back(ToUpperCase(c));
             }
         }
+    }
+    else
+    {
+        isOk = false;
     }
 
     seq = Sequence(data, id);

@@ -28,8 +28,14 @@ public:
     FASTA(const std::string& _filename);
 
     FASTA& operator>>(Sequence& seq);
+
+    operator bool() const {
+        return isOk;
+    };
 private:
+    std::ifstream is;
     std::string filename;
+    bool isOk;
 };
 
 class FASTQ {

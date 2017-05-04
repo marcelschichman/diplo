@@ -27,7 +27,7 @@ const vector<pair<int, int>>& SequenceNode::GetOverlaps(char nextBase) const
 
 void SequenceGraph::LoadReads(const string &filename)
 {
-    FASTQ f(filename);
+    FASTA f(filename);
     Sequence s;
 
     while (f >> s)
@@ -271,6 +271,10 @@ void SequenceGraph::FindOverlaps(vector<SequenceNode> &nodes)
                 case 'G': n.overlapsG.push_back(n.overlaps[i]);
                 default: n.overlapsT.push_back(n.overlaps[i]);
             }
+        }
+        if (params.maxEdgesFromNode >= -1 && n.overlaps.size() > params.maxEdgesFromNode)
+        {
+            n.overlaps.resize(params.maxEdgesFromNode);
         }
     }
 }

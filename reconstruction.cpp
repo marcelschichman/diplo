@@ -9,7 +9,7 @@
 
 pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<SequenceNode>& nodes, int begin, int end)
 {
-    cout << "node count: " << nodes.size() << endl;
+    //cout << "node count: " << nodes.size() << endl;
 
     auto compare = [end](const Position& left, const Position& right)
     {
@@ -58,8 +58,8 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
         if (step.node == end && step.posInRead == endNode.expectedPos + step.posInNode)
         {
             //end
-            cout << "pruned: " << pruned << endl;
-            cout << "iterations: " << iterationCounter << endl;
+            // cout << "pruned: " << pruned << endl;
+            // cout << "iterations: " << iterationCounter << endl;
             return make_pair(RecreatePath(positions, nodes, currentPosition), step.distance);
         }
 
@@ -82,9 +82,10 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
                 // if (!nextNode.isFromReference
                 //  || (overlapNextNode.first == end && step.posInRead == endNode.expectedPos + overlapNextNode.second))
                 // {
+                    int jumpSize = nextNode.length - overlapNextNode.second - 1;
                     int newDistance = step.distance
-                        + scoring.overlapPenalty(overlapNextNode.second, nextNode.length)
-                        + scoring.misplacementPenalty(step.posInRead - nextNode.expectedPos - overlapNextNode.second);
+                        + jumpSize * scoring.jumpLinearPenalty + jumpSize * jumpSize * scoring.jumpQuadraticPenalty
+                        + (step.posInRead - nextNode.expectedPos - overlapNextNode.second > scoring.maxKmerMisplacement) * 50;
                     steps.push({
                         newDistance, 
                         step.posInRead, 
@@ -137,7 +138,7 @@ pair<string, int> Reconstruction::FindPath(const Sequence& read, const vector<Se
             }
         }
     }
-    cout << "iterations: " << iterationCounter << endl;
+    // cout << "iterations: " << iterationCounter << endl;
     return make_pair("", -1);
 }
 
@@ -167,7 +168,7 @@ string Reconstruction::RecreatePath(const vector<Position>& positions, const vec
 void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode>& nodes, vector<string>& result)
 {
     result.clear();
-    cout << "reconstruct" << endl;
+    // cout << "reconstruct" << endl;
     // const int skipsAllowed = 2;
     // const int minSequenceLength = 40;
 
@@ -179,11 +180,11 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
             nodesFromReference.push_back(i);
         }
     }
-    cout << "ndoes from reference: " << nodesFromReference.size() << endl;
+    cerr << "ndoes from reference: " << nodesFromReference.size() << endl;
     sort(nodesFromReference.begin(), nodesFromReference.end(), [&nodes](int left, int right) {
         return nodes[left].expectedPos < nodes[right].expectedPos;
     });
-    cout << "sorted" << endl;
+    // cout << "sorted" << endl;
 
     vector<string> paths(nodesFromReference.size());
 
@@ -221,9 +222,9 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
             {
                 continue;
             }
-            /**/cout << nodesFromReference[i - jump] << " " << nodesFromReference[i] << endl;
-            /**/cout << " expected pos: " << nodes[nodesFromReference[i - jump]].expectedPos << " " <<
-            /**/nodes[nodesFromReference[i]].expectedPos << " " << nodes[nodesFromReference[i - jump]].GetSequence() << " " << nodes[nodesFromReference[i]].GetSequence() << endl;
+            // /**/cout << nodesFromReference[i - jump] << " " << nodesFromReference[i] << endl;
+            // /**/cout << " expected pos: " << nodes[nodesFromReference[i - jump]].expectedPos << " " <<
+            // /**/nodes[nodesFromReference[i]].expectedPos << " " << nodes[nodesFromReference[i - jump]].GetSequence() << " " << nodes[nodesFromReference[i]].GetSequence() << endl;
 
 
             const SequenceNode& leftNode = nodes[nodesFromReference[i - jump]];
@@ -239,12 +240,12 @@ void Reconstruction::Reconstruct(const Sequence& read, const vector<SequenceNode
             }
             else
             {
-                /**/Utils::StartTiming();
+                // /**/Utils::StartTiming();
                 path = FindPath(read, nodes, nodesFromReference[i - jump], nodesFromReference[i]);
-                /**/Utils::VerbalResult("Find path");
+                // /**/Utils::VerbalResult("Find path");
             } 
-            /**/cout << "from " << i - jump << " to " << i << " distance " << path.second << " " << path.first << endl;
-            /**/cout << endl << endl;
+            // /**/cout << "from " << i - jump << " to " << i << " distance " << path.second << " " << path.first << endl;
+            // /**/cout << endl << endl;
             if (path.second != -1 && pathToMatches[i].distance > path.second + pathToMatches[i - jump].distance)
             {
                 pathToMatches[i].distance = path.second + pathToMatches[i - jump].distance;

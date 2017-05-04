@@ -45,6 +45,7 @@ struct SequenceGraphParams
     int nodeLength;
     int overlappingKmersMaxExpectedPosDistance;
     int minKmerOverlap;
+    int maxEdgesFromNode;
 };
 
 class SequenceGraph

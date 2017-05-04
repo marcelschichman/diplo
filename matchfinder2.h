@@ -1,6 +1,7 @@
 #pragma once
 #include "matchfinder.h"
 #include <sstream>
+#include <unordered_map>
 using namespace std;
 
 struct OverlapGraph
@@ -50,7 +51,7 @@ public:
         : params(_params)
         , numReads(0)
     {
-        countPos.resize(1 << (2 * params.kmerLength));
+        //countPos.resize(1 << (2 * params.kmerLength));
     }
 
     int CreateIndex(const string& fastq);
@@ -88,7 +89,8 @@ protected:
 
     long long numReads;
     //unsigned char *matchCounts;
-    vector<int> countPos;
+    //vector<int> countPos;
+    unordered_map<long long, int> countPos;
     vector<pair<unsigned short, short>> kmers;
     vector<int> readLengths;
 };

@@ -1,22 +1,34 @@
 import sys
 
-reads_filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq"
-positions_filename = "/home/marcel/programming/data/positions.txt"
+# reads_filename = "/home/marcel/programming/data/PacBio_10kb_CLR.fastq"
+# positions_filename = "/home/marcel/programming/data/positions.txt"
+reads_filename = "/home/marcel/programming/diplo/tests/test_dataset.fasta"
+positions_filename = "/home/marcel/programming/diplo/tests/positions.blasr"
 
 # load reads
 reads = []
 name2id = {}
 freads = open(reads_filename, "r")
+# while True:
+#     l1 = freads.readline()
+#     if l1 == "":
+#         break
+#     l2 = freads.readline()
+#     l3 = freads.readline()
+#     l4 = freads.readline()
+
+#     name2id[l1.strip()[1:]] = len(reads)
+#     reads.append((l1.strip()[1:], len(l2.strip())))
+
 while True:
     l1 = freads.readline()
     if l1 == "":
         break
-    l2 = freads.readline()
-    l3 = freads.readline()
-    l4 = freads.readline()
+    if l1[0] == ">":
+        name2id[l1.strip()[1:]] = len(reads)
+        reads.append((l1.strip()[1:], 0))
 
-    name2id[l1.strip()[1:]] = len(reads)
-    reads.append((l1.strip()[1:], len(l2.strip())))
+#print(name2id["m110618_035655_42142_c100158802555500000315044108071130_s1_p0/2958/0_4673"])
 
 # load positions
 positions = {}
@@ -73,11 +85,10 @@ def get_num_overlaps(idRead):
 
 #print("num overlaps:", get_num_overlaps(1001))
 
-for i in range(1010):
-    if reads[i][1] > 1000:
-        num, overlaps = get_num_overlaps(i)
-        if num != -1:
-            print(i, " ".join([str(x) for x in overlaps]))
+for i in range(len(reads)):
+    num, overlaps = get_num_overlaps(i)
+    if num != -1:
+        print(i, " ".join([str(x) for x in overlaps]))
 
 
 x = 4

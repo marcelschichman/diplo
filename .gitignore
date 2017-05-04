@@ -10,3 +10,4 @@ CMakeFiles/*
 *.fasta
 *.fastq
 read_selector
+tests/*

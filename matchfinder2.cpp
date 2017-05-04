@@ -6,26 +6,40 @@ int  MatchFinder2::CreateIndex(const string &fastq)
 {
     readLengths.clear();
     GetCounts(fastq);
+    cerr << "kmer counts acquired" << endl;
 
     // counts to positions
     int sum = 0;
     int temp;
+    // for (auto& x : countPos)
+    // {
+    //     temp = x;
+    //     x = sum;
+    //     sum += temp;
+    // }
     for (auto& x : countPos)
     {
-        temp = x;
-        x = sum;
+        temp = x.second;
+        x.second = sum;
         sum += temp;
     }
 
     kmers.resize(sum);
     GetKmers(fastq);
+    cerr << "kmer positions acquired" << endl;
 
     // return positions
-    for (int i = (int)countPos.size() - 1; i > 0; i--)
+    // for (int i = (int)countPos.size() - 1; i > 0; i--)
+    // {
+    //     countPos[i] = countPos[i - 1];
+    // }
+    // countPos[0] = 0;
+    int prev = 0;
+    for (auto& x : countPos)
     {
-        countPos[i] = countPos[i - 1];
+        swap(prev, x.second);
     }
-    countPos[0] = 0;
+
     return numReads;
 //    cout << "done" << endl;
 //    cin >> sum;
@@ -34,7 +48,7 @@ int  MatchFinder2::CreateIndex(const string &fastq)
 
 void MatchFinder2::GetCounts(const string &fastq)
 {
-    FASTQ reader(fastq);
+    FASTA reader(fastq);
 
     Sequence seq;
     while (reader >> seq)
@@ -42,9 +56,9 @@ void MatchFinder2::GetCounts(const string &fastq)
         readLengths.push_back(seq.GetData().length());
 
         numReads++;
-        unsigned int seed = 0;
-        unsigned int reversedSeed = 0;
-        unsigned int mask = ((long long)1 << (2 * params.kmerLength)) - 1;
+        unsigned long long seed = 0;
+        unsigned long long reversedSeed = 0;
+        unsigned long long mask = ((long long)1 << (2 * params.kmerLength)) - 1;
         char *data = seq.ToDalignFromat();
         int genomeLength = (int)seq.GetData().length();
 
@@ -66,15 +80,15 @@ void MatchFinder2::GetCounts(const string &fastq)
 
 void MatchFinder2::GetKmers(const string& fastq)
 {
-    FASTQ reader(fastq);
+    FASTA reader(fastq);
 
     Sequence seq;
     int id = 0;
     while (reader >> seq)
     {
-        unsigned int seed = 0;
-        unsigned int reversedSeed = 0;
-        unsigned int mask = ((long long)1 << (2 * params.kmerLength)) - 1;
+        unsigned long long seed = 0;
+        unsigned long long reversedSeed = 0;
+        unsigned long long mask = ((long long)1 << (2 * params.kmerLength)) - 1;
         char *data = seq.ToDalignFromat();
         int genomeLength = (int)seq.GetData().length();
 
@@ -167,10 +181,17 @@ void MatchFinder2::ProcessMatches(OverlapGraph& graph, int rangeBegin, int range
 
     vector<vector<pair<unsigned short, Match>>> matches (rangeEnd - rangeBegin);
 
-    for (int i = 0; i < (int)countPos.size(); i++)
+    // for (int i = 0; i < (int)countPos.size(); i++)
+    // {
+    //     int beginKmerRegion = countPos[i];
+    //     int endKmerRegion = (i < (int)countPos.size() - 1) ? countPos[i + 1] : (int)kmers.size();
+    for (auto it = countPos.begin(); it != countPos.end(); it++)
     {
-        int beginKmerRegion = countPos[i];
-        int endKmerRegion = (i < (int)countPos.size() - 1) ? countPos[i + 1] : (int)kmers.size();
+        int beginKmerRegion = it->second;
+        auto it2 = it;
+        it2++;
+        int endKmerRegion = (it2 != countPos.end()) ? (it2->second) : (int)kmers.size();
+
         int numPositions = endKmerRegion - beginKmerRegion;
         if (numPositions > params.validKmerMaxOccurrences)
         {
@@ -327,6 +348,6 @@ int MatchFinder2::GetOverlapLength(Window& w, int idReadRef)
 
 void MatchFinder2::Clear()
 {
-    vector<int>().swap(countPos);
+    decltype(countPos)().swap(countPos);
     decltype(kmers)().swap(kmers);
 }
